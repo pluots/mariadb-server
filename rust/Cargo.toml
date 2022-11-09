@@ -1,0 +1,13 @@
+# Define our crates within a workspace
+
+[workspace]
+
+members = [
+    "bindings",
+    "mariadb",
+    "macros",
+    "examples/keymgt-basic",
+    "examples/keymgt-debug",
+    "examples/encryption",
+    "plugins/keymgt-clevis",
+]

@@ -1,0 +1,14 @@
+[package]
+name = "mariadb"
+version = "0.1.0"
+edition = '2021'
+
+
+[dependencies]
+mariadb-sys = { path = "../bindings" }
+mariadb-macros = { path = "../macros" }
+cstr = "0.2.11"
+concat-idents = "1.1.4"
+time = { version = "0.3.17", features = ["formatting"]}
+log = "0.4.17"
+env_logger = "0.10.0"

@@ -1,0 +1,178 @@
+---
+
+# Main "useful" actions config file
+# Cache config comes from https://github.com/actions/cache/blob/main/examples.md#rust---cargo
+# actions-rs/toolchain configures rustup
+# actions-rs/cargo actually runs cargo
+
+on:
+  push:
+    branches:
+    - rust
+  # pull_request:
+
+name: Rust Validation
+
+jobs:
+  check:
+    name: "Check (cargo check)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+            rust/target/
+            CMakeFiles/
+            CMakeCache.txt
+            CPackConfig.cmake
+            CPackSourceConfig.cmake
+            CTestTestfile.cmake
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - run: sudo apt-get update && sudo apt-get install cmake
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo check --manifest-path rust/Cargo.toml
+
+  test:
+    strategy:
+        fail-fast: true
+        matrix:
+          os: [ubuntu-latest] #, windows-latest, macos-latest]
+          include:
+            - os: ubuntu-latest
+              name: linux
+            # - os: windows-latest
+            #   name: windows
+            # - os: macos-latest
+            #   name: mac
+
+    name: "Test on ${{ matrix.name }} (cargo test)"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+            rust/target/
+            CMakeFiles/
+            CMakeCache.txt
+            CPackConfig.cmake
+            CPackSourceConfig.cmake
+            CTestTestfile.cmake
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - run: sudo apt-get update && sudo apt-get install cmake
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --manifest-path rust/Cargo.toml
+        env:
+          RUST_BACKTRACE: "1"
+
+
+  fmt:
+    name: "Format (cargo fmt)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+            rust/target/
+            CMakeFiles/
+            CMakeCache.txt
+            CPackConfig.cmake
+            CPackSourceConfig.cmake
+            CTestTestfile.cmake
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --manifest-path rust/Cargo.toml --all -- --check
+
+  clippy:
+    name: "Clippy (cargo clippy)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+            rust/target/
+            CMakeFiles/
+            CMakeCache.txt
+            CPackConfig.cmake
+            CPackSourceConfig.cmake
+            CTestTestfile.cmake
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - run: sudo apt-get update && sudo apt-get install cmake
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: clippy
+      - run: cargo clippy --manifest-path rust/Cargo.toml -- -D warnings
+
+  doc:
+    name: "Docs (cargo doc) & Pub"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+            rust/target/
+            CMakeFiles/
+            CMakeCache.txt
+            CPackConfig.cmake
+            CPackSourceConfig.cmake
+            CTestTestfile.cmake
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - run: sudo apt-get update && sudo apt-get install cmake
+      - uses: dtolnay/rust-toolchain@stable
+      # test docs for everything
+      - name: Test build all docs
+        run: cargo doc --manifest-path rust/Cargo.toml --no-deps
+      # create docs for the crate we care about
+      - name: Build docs for publish
+        run: |
+          rm -rf target/doc/ rust/target/doc/
+          cargo doc --manifest-path rust/mariadb/Cargo.toml --no-deps
+          cargo doc --manifest-path rust/bindings/Cargo.toml --no-deps
+      - run: |
+          echo `pwd`/rust/target/doc >> $GITHUB_PATH
+          # fake index.html so github likes us
+          echo "<meta http-equiv=\"refresh\" content=\"0; url=mariadb\">" > rust/target/doc/index.html
+      - name: Deploy GitHub Pages
+        run: |
+          git worktree add gh-pages
+          git config user.name "Deploy from CI"
+          git config user.email ""
+          cd gh-pages
+          # Delete the ref to avoid keeping history.
+          git update-ref -d refs/heads/gh-pages
+          rm -rf *
+          mv ../rust/target/doc/* .
+          git add .
+          git commit -m "Deploy $GITHUB_SHA to gh-pages"
+          git push --force --set-upstream origin gh-pages
