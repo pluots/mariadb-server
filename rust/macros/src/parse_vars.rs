@@ -27,24 +27,18 @@
 //! }
 //! ```
 
-#![allow(unused)]
-
 // use proc_macro::TokenStream;
-use proc_macro2::{Literal, Span, TokenStream, TokenTree};
+use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
-use syn::parse::{Parse, ParseBuffer, ParseStream};
+use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::token::Group;
-use syn::{
-    bracketed, parse_macro_input, parse_quote, Attribute, DeriveInput, Error, Expr, ExprArray,
-    ExprLit, ExprStruct, FieldValue, Ident, ImplItem, ImplItemType, Item, ItemImpl, Lit, LitStr,
-    Path, PathSegment, Token, Type, TypePath, TypeReference,
-};
+use syn::{bracketed, parse_quote, Error, Expr, ExprStruct, Ident, Token, TypePath};
 
 use crate::fields::sysvar::{ALL_FIELDS, OPT_FIELDS, REQ_FIELDS};
 use crate::helpers::expect_litstr;
 
+#[allow(dead_code)] // showvar not yet used
 #[derive(Clone, Copy, Debug)]
 enum VarTypeInner {
     SysVar,
@@ -176,7 +170,7 @@ impl VariableInfo {
             return Err(Error::new_spanned(&self.vtype, "missing required field 'vtype'"));
         };
 
-        self.validate_correct_fields(REQ_FIELDS, OPT_FIELDS);
+        self.validate_correct_fields(REQ_FIELDS, OPT_FIELDS)?;
 
         let ty_as_svwrap = quote! { <#vtype as ::mariadb::plugin::internals::SysVarInterface> };
         let name = expect_litstr(&self.name)?;
@@ -190,17 +184,22 @@ impl VariableInfo {
         let max = process_default_override(&self.max, "max_val")?;
         let interval = process_default_override(&self.interval, "blk_sz")?;
 
-        let st_ident = Ident::new(&format!("_st_sysvar_{}", name.value()), Span::call_site());
-        // https://github.com/rust-lang/rust/issues/86935#issuecomment-1146670057
-        let ty_wrap = Ident::new(
-            &format!("_st_sysvar_Type{}", name.value()),
+        let st_ident = Ident::new(&format!("_sysvar_st_{}", name.value()), Span::call_site());
+        let st_tycheck = Ident::new(
+            &format!("_sysvar_tychk_{}", name.value()),
             Span::call_site(),
         );
+        // https://github.com/rust-lang/rust/issues/86935#issuecomment-1146670057
+        let ty_wrap = Ident::new(&format!("_sysvar_Type{}", name.value()), Span::call_site());
+        // check to verify our vars are of the right type for our idents
+        let ty_check = quote! { static #st_tycheck: &#vtype = &#ident; };
 
         let usynccell = quote! { ::mariadb::internals::UnsafeSyncCell };
 
         let res = quote! {
             type #ty_wrap<T> = T;
+
+            #ty_check
 
             static #st_ident: #usynccell<#ty_wrap::<#ty_as_svwrap::CStructType>> = unsafe {
                 #usynccell::new(
@@ -223,7 +222,7 @@ impl VariableInfo {
 
         };
 
-        Ok((st_ident.clone(), res))
+        Ok((st_ident, res))
     }
 
     /// Take the options vector, parse it as an array, bitwise or the output,
@@ -261,7 +260,7 @@ impl VariableInfo {
             (&self.max, "max"),
             (&self.interval, "interval"),
         ];
-        let vtype = self.vtype.as_ref().unwrap();
+        let vtype = self.vtype.as_ref().unwrap().to_token_stream();
         let mut req = REQ_FIELDS.to_vec();
         req.extend_from_slice(required);
 
@@ -270,7 +269,7 @@ impl VariableInfo {
 
             if field_val.is_none() {
                 let msg = format!(
-                    "field '{fname}' is expected for variables of type {vtype:?}, but not provided"
+                    "field '{fname}' is expected for variables of type '{vtype}', but not provided"
                 );
                 return Err(Error::new(self.span.unwrap(), msg));
             }
@@ -279,7 +278,7 @@ impl VariableInfo {
         for (field, fname) in name_map {
             if field.is_some() && !req.contains(&fname) && !optional.contains(&fname) {
                 let msg =
-                    format!("field '{fname}' is not expected for variables of type {vtype:?}");
+                    format!("field '{fname}' is not expected for variables of type '{vtype}'");
                 return Err(Error::new_spanned(field.as_ref().unwrap(), msg));
             }
         }
@@ -319,7 +318,7 @@ fn verify_field_order(fields: &[String]) -> Result<(), String> {
 
 /// Process "default override" style fields by these rules:
 ///
-/// - If `field` is `None`, return an empty TokenStream
+/// - If `field` is `None`, return an empty `TokenStream`
 /// - Enforce it is a literal
 /// - If it is a literal string, change it to a `cstr`
 ///

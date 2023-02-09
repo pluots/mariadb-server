@@ -47,20 +47,20 @@ pub enum EncryptionError {
 pub struct Flags(i32);
 
 impl Flags {
-    pub(crate) fn new(value: i32) -> Self {
+    pub(crate) const fn new(value: i32) -> Self {
         Self(value)
     }
 
-    pub(crate) fn should_encrypt(self) -> bool {
+    pub const fn should_encrypt(self) -> bool {
         (self.0 & bindings::ENCRYPTION_FLAG_ENCRYPT as i32) != 0
     }
 
-    pub(crate) fn should_decrypt(self) -> bool {
+    pub(crate) const fn should_decrypt(self) -> bool {
         // (self.0 & bindings::ENCRYPTION_FLAG_DECRYPT as i32) != 0
         !self.should_encrypt()
     }
 
-    pub fn nopad(&self) -> bool {
+    pub const fn nopad(&self) -> bool {
         (self.0 & bindings::ENCRYPTION_FLAG_NOPAD as i32) != 0
     }
 }
@@ -90,7 +90,7 @@ pub trait KeyManager: Send + Sized {
     fn key_length(key_id: u32, key_version: u32) -> Result<usize, KeyError>;
 }
 
-// TODO: Maybe split into `Encrypt` and `Decrypt` traits
+// TODO: Split into `Encrypt` and `Decrypt` traits
 pub trait Encryption: Sized {
     /// Initialize the encryption context object
     fn init(
@@ -102,11 +102,14 @@ pub trait Encryption: Sized {
     ) -> Result<Self, EncryptionError>;
 
     /// Update the encryption context with new data, return the number of bytes
-    /// written
-    fn update(&mut self, src: &[u8], dst: &mut [u8]) -> Result<(), EncryptionError>;
+    /// written. Do not append the iv to the ciphertext, MariaDB keeps track of
+    /// it separately.
+    fn update(&mut self, src: &[u8], dst: &mut [u8]) -> Result<usize, EncryptionError>;
 
-    /// Write the remaining bytes to the buffer
-    fn finish(&mut self, dst: &mut [u8]) -> Result<(), EncryptionError>;
+    /// Write the remaining bytes to the buffer. This usually can't write anything.
+    fn finish(&mut self, dst: &mut [u8]) -> Result<usize, EncryptionError> {
+        Ok(0)
+    }
 
     /// Return the exact length of the encrypted data based on the source length
     ///

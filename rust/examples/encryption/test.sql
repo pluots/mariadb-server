@@ -1,3 +1,5 @@
+INSTALL PLUGIN encryption_example SONAME 'libencryption_example.so';
+
 SET GLOBAL innodb_encryption_threads=1;
 SET GLOBAL innodb_encrypt_tables=ON;
 SET SESSION innodb_default_encryption_key_id=100;
@@ -17,3 +19,5 @@ INSERT INTO t1(id, str) VALUES
     (4, 'jkl');
 
 FLUSH TABLES t1 FOR EXPORT;
+UNLOCK TABLES;
+FLUSH TABLES t1 WITH READ LOCK;
