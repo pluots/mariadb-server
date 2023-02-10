@@ -9,6 +9,7 @@ on:
   push:
     branches:
     - rust
+  pull_request:
   # pull_request:
 
 name: Rust Validation
@@ -76,8 +77,17 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       # - run: sudo apt-get update && sudo apt-get install cmake
       - uses: dtolnay/rust-toolchain@nightly
-      - run: cargo test --manifest-path rust/Cargo.toml
-
+      - name: Install openssl & run cargo test 
+        if: runner.os == 'Windows'
+        run: |
+          choco install openssl --no-progress
+          $env:OPENSSL_DIR="C:\Program Files\OpenSSL-Win64"
+          echo $env:OPENSSL_DIR
+          ls $env:OPENSSL_DIR
+          cargo test --manifest-path rust/Cargo.toml
+      - name: Run cargo test
+        if: runner.os != 'Windows'
+        run: cargo test --manifest-path rust/Cargo.toml
 
   fmt:
     name: "Format (cargo fmt)"

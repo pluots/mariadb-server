@@ -70,24 +70,44 @@ impl BuildCallbacks {
 fn main() {
     // Tell cargo to invalidate the built crate whenever the wrapper changes
     println!("cargo:rerun-if-changed=src/wrapper.h");
+    let cargo_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let cmake_path = cargo_dir.parent().unwrap().parent().unwrap();
+    let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
+    let profile = std::env::var("PROFILE").unwrap();
+
+    let cmake_build_flag = match profile.as_str() {
+        "release" => "-DBUILD_CONFIG=mysql_release",
+        "debug" => "-DCMAKE_BUILD_TYPE=Debug",
+        _ => panic!(),
+    };
 
     // Run cmake to configure only
     Command::new("cmake")
-        .args(["../../", "-B../../"])
+        .arg(cmake_path)
+        .arg("-B")
+        // .arg("../../")
+        .arg(&out_dir)
+        .arg(cmake_build_flag)
         .output()
         .expect("failed to invoke cmake");
 
-    // The bindgen::Builder is the main entry point
-    // to bindgen, and lets you build up options for
-    // the resulting bindings.
+    // panic!("OD is {out_dir}");
+    // let dst = cmake::build("../../");
+    // let dst = cmake::Config::new("../../")
+    //     .build();
+    // println!("cargo:rustc-link-search=native={}", dst.display());
+    // println!("cargo:rustc-link-lib=static=foo");
+
+    // The bindgen::Builder is the main entry point to bindgen, and lets you
+    // build up options for the resulting bindings.
     let bindings = bindgen::Builder::default()
         // The input header we would like to generate
         // bindings for.
         .header("src/wrapper.h")
-        // Fix math.h double defines
-        .parse_callbacks(Box::new(BuildCallbacks::new()))
-        .clang_arg("-I../../include")
-        .clang_arg("-I../../sql")
+        .clang_arg(format!("-I{}", cmake_path.join("include").display()))
+        .clang_arg(format!("-I{}", cmake_path.join("sql").display()))
+        .clang_arg(format!("-I{}", out_dir.join("include").display()))
+        .clang_arg(format!("-I{}", out_dir.join("sql").display()))
         .clang_arg("-xc++")
         .clang_arg("-std=c++17")
         // Don't derive copy for structs
@@ -96,6 +116,8 @@ fn main() {
         .default_enum_style(EnumVariation::Rust {
             non_exhaustive: true,
         })
+        // Fix math.h double defines
+        .parse_callbacks(Box::new(BuildCallbacks::new()))
         // LLVM has some issues with long dobule and ABI compatibility
         // disabling the only relevant function here to suppress errors
         .blocklist_function("strfroml")
