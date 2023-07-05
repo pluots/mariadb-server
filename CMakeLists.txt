@@ -164,6 +164,7 @@ INCLUDE(pcre)
 INCLUDE(libfmt)
 INCLUDE(ctest)
 INCLUDE(plugin)
+INCLUDE(rust)
 INCLUDE(install_macros)
 INCLUDE(systemd)
 INCLUDE(mysql_add_executable)
@@ -447,6 +448,7 @@ MARK_AS_ADVANCED(PYTHON_SHEBANG)
 
 # Add storage engines and plugins.
 CONFIGURE_PLUGINS()
+CONFIGURE_RUST_PLUGINS()
 
 ADD_SUBDIRECTORY(include)
 ADD_SUBDIRECTORY(dbug)
