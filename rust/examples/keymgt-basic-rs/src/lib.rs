@@ -5,14 +5,10 @@
 //!
 //! EXAMPLE ONLY: DO NOT USE IN PRODUCTION!
 
-#![allow(unused)]
-
-use std::cell::UnsafeCell;
-use std::ffi::c_void;
 use std::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
 
-use mariadb::plugin::encryption::{Encryption, Flags, KeyError, KeyManager};
-use mariadb::plugin::{register_plugin, PluginType, SysVarOpt, *};
+use mariadb::plugin::encryption::{KeyError, KeyManager};
+use mariadb::plugin::{register_plugin, Init, InitError, License, Maturity, PluginType};
 
 struct BasicKeyMgt;
 
@@ -48,7 +44,7 @@ impl KeyManager for BasicKeyMgt {
         }
 
         // Copy our slice to the buffer, return the copied length
-        dst[..s.len()].copy_from_slice(s.as_str().as_bytes());
+        dst[..s.len()].copy_from_slice(s.as_bytes());
         Ok(())
     }
 

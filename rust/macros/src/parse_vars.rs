@@ -176,17 +176,18 @@ impl VariableInfo {
         self.validate_correct_fields(REQ_FIELDS, OPT_FIELDS)?;
 
         let ty_as_svwrap = quote! { <#vtype as ::mariadb::plugin::internals::SysVarInterface> };
-        let name = expect_litstr(&self.name)?;
+        let name = expect_litstr(self.name.as_ref())?;
         let ident = self.ident.as_ref().unwrap();
         let opts = self.make_option_fields()?;
         let flags = quote! { #ty_as_svwrap::DEFAULT_OPTS #opts };
-        let description = expect_litstr(&self.description)?;
+        let description = expect_litstr(self.description.as_ref())?;
 
         let default = process_default_override(&self.default, "def_val")?;
         let min = process_default_override(&self.min, "min_val")?;
         let max = process_default_override(&self.max, "max_val")?;
         let interval = process_default_override(&self.interval, "blk_sz")?;
 
+        // check to verify our vars are of the right type for our idents
         let st_ident = Ident::new(&format!("_sysvar_st_{}", name.value()), Span::call_site());
         let st_tycheck = Ident::new(
             &format!("_sysvar_tychk_{}", name.value()),
@@ -194,16 +195,20 @@ impl VariableInfo {
         );
         // https://github.com/rust-lang/rust/issues/86935#issuecomment-1146670057
         let ty_wrap = Ident::new(&format!("_sysvar_Type{}", name.value()), Span::call_site());
-        // check to verify our vars are of the right type for our idents
-        let ty_check = quote! { static #st_tycheck: &#vtype = &#ident; };
+        let ty_check = quote! {
+            #[allow(non_upper_case_globals)]
+            static #st_tycheck: &#vtype = &#ident;
+        };
 
         let usynccell = quote! { ::mariadb::internals::UnsafeSyncCell };
 
         let res = quote! {
+            #[allow(non_camel_case_types)]
             type #ty_wrap<T> = T;
 
             #ty_check
 
+            #[allow(non_upper_case_globals)]
             static #st_ident: #usynccell<#ty_wrap::<#ty_as_svwrap::CStructType>> = unsafe {
                 #usynccell::new(
                     #ty_wrap::<#ty_as_svwrap::CStructType> {

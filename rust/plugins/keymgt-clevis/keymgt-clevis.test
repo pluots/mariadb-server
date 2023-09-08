@@ -1,0 +1,9 @@
+SET SESSION innodb_default_encryption_key_id=1;
+install plugin clevis_key_management soname 'keymgt_clevis.so';
+
+SET GLOBAL innodb_encryption_threads=1;
+SET GLOBAL innodb_encrypt_tables=ON;
+
+use mysql;
+insert into clevis_keys (key_id, key_version, server, client_pub) values
+(1, 2, 'a', 'b');

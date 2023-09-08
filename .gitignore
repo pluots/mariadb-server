@@ -626,4 +626,3 @@ win/packaging/ca/symlinks.cc
 
 # rust output
 rust/target
-Cargo.lock
