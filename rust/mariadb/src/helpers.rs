@@ -1,7 +1,4 @@
 use std::cell::UnsafeCell;
-use std::ptr;
-
-use super::bindings;
 
 /// Used for plugin registrations, which are in global scope.
 #[doc(hidden)]
@@ -34,6 +31,7 @@ impl<T> UnsafeSyncCell<T> {
 unsafe impl<T> Send for UnsafeSyncCell<T> {}
 unsafe impl<T> Sync for UnsafeSyncCell<T> {}
 
+#[allow(dead_code)]
 pub fn str2bool(s: &str) -> Option<bool> {
     const TRUE_VALS: [&str; 3] = ["on", "true", "1"];
     const FALSE_VALS: [&str; 3] = ["off", "false", "0"];

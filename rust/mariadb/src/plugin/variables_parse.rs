@@ -16,54 +16,48 @@
 //!
 //! # Update function
 //!
-//!
-//!
 //! - `thd`: thread handle
 //! - `var`: system variable union. SAFETY: must be correct type (caller varifies)
 //! - `save`: pointer to temporary storage
 //! - `value`: user-provided value
 
 use std::cell::UnsafeCell;
-use std::ffi::{c_int, c_void, CStr};
-use std::os::raw::c_char;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::ffi::c_int;
 
-use super::variables::SysVarInfoU;
 use crate::bindings;
-use crate::helpers::str2bool;
 
 /// # Safety
 ///
 /// Variable has to be of the right type, bool
-pub unsafe fn check_func_atomic_bool<T>(
-    thd: *const c_void,
-    var: *mut c_void,
-    // var: *mut SysVarInfoU<bool>,
-    save: *mut c_void,
-    value: *const bindings::st_mysql_value,
-) -> c_int {
-    todo!()
-    // let sql_val = MySqlValue::from_ptr(value);
-    // let dest: *const AtomicBool = save.cast();
-    // let new_val = match sql_val.value() {
-    //     Value::Int(v) => {
-    //         let tmp = v.unwrap_or(0);
-    //         match tmp {
-    //             0 => false,
-    //             1 => true,
-    //             _ => return 1,
-    //         }
-    //     }
-    //     Value::String(s) => {
-    //         let inner = s.expect("got null string");
-    //         str2bool(&inner)
-    //             .unwrap_or_else(|| panic!("value '{inner}' is not a valid bool indicator"))
-    //     }
-    //     Value::Real(_) => panic!("unexpected real value"),
-    // };
-    // (*dest).store(new_val, Ordering::Relaxed);
-    // 0
-}
+// pub unsafe fn check_func_atomic_bool<T>(
+//     thd: *const c_void,
+//     var: *mut c_void,
+//     // var: *mut SysVarInfoU<bool>,
+//     save: *mut c_void,
+//     value: *const bindings::st_mysql_value,
+// ) -> c_int {
+//     todo!()
+// let sql_val = MySqlValue::from_ptr(value);
+// let dest: *const AtomicBool = save.cast();
+// let new_val = match sql_val.value() {
+//     Value::Int(v) => {
+//         let tmp = v.unwrap_or(0);
+//         match tmp {
+//             0 => false,
+//             1 => true,
+//             _ => return 1,
+//         }
+//     }
+//     Value::String(s) => {
+//         let inner = s.expect("got null string");
+//         str2bool(&inner)
+//             .unwrap_or_else(|| panic!("value '{inner}' is not a valid bool indicator"))
+//     }
+//     Value::Real(_) => panic!("unexpected real value"),
+// };
+// (*dest).store(new_val, Ordering::Relaxed);
+// 0
+// }
 
 // pub unsafe fn update_func_atomic_bool<T>(
 //     thd: *const c_void,
@@ -82,6 +76,7 @@ pub unsafe fn check_func_atomic_bool<T>(
 //     (*dest).store(new_val_bool, Ordering::Relaxed);
 // }
 
+#[allow(dead_code)]
 #[derive(Debug, PartialEq)]
 pub enum CliValue {
     Int(Option<i64>),
@@ -89,8 +84,10 @@ pub enum CliValue {
     String(Option<String>),
 }
 
+#[allow(dead_code)]
 pub struct CliMysqlValue(UnsafeCell<bindings::st_mysql_value>);
 
+#[allow(dead_code)]
 impl CliMysqlValue {
     /// `item_val_str function`, `item_val_int`, `item_val_real`
     pub(crate) fn value(&self) -> CliValue {

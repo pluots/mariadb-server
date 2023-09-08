@@ -18,6 +18,9 @@ specify a specific path to only document one crate).
 
 ## Testing with Docker
 
+NOTE: This section is out of date. Most of the time, `./rust/run.sh` is
+the entrypoint for docker/podman work.
+
 
 ```sh
 # Build the image. Change the directory (../) if not building in `rust/`
@@ -103,3 +106,7 @@ Todo
 
 We want this to be able to initialize a docker container and run tests against
 it, but not sure how. Preferably using our built mariadb.
+
+### `common/`
+
+Crates that we use in more than one place, e.g. in multiple plugins

@@ -5,15 +5,10 @@
 //!
 //! EXAMPLE ONLY: DO NOT USE IN PRODUCTION!
 
-#![allow(unused)]
-
-use std::cell::UnsafeCell;
-use std::ffi::c_void;
 use std::sync::atomic::{AtomicI32, AtomicU32, Ordering};
-use std::sync::Mutex;
 
 use mariadb::log::{self, debug, trace};
-use mariadb::plugin::encryption::{Encryption, Flags, KeyError, KeyManager};
+use mariadb::plugin::encryption::{KeyError, KeyManager};
 use mariadb::plugin::{
     register_plugin, Init, InitError, License, Maturity, PluginType, SysVarConstString, SysVarOpt,
     SysVarString,
@@ -53,16 +48,16 @@ impl KeyManager for DebugKeyMgmt {
     fn get_latest_key_version(key_id: u32) -> Result<u32, KeyError> {
         debug!("DebugKeyMgmt get_latest_key_version");
         if key_id != 1 {
-            Err(KeyError::VersionInvalid)
+            Err(KeyError::InvalidVersion)
         } else {
             Ok(KEY_VERSION.load(Ordering::Relaxed))
         }
     }
 
     fn get_key(key_id: u32, key_version: u32, dst: &mut [u8]) -> Result<(), KeyError> {
-        debug!("DebugKeyMgmt get_key");
+        debug!("DebugKeyMgmt get_key, id {key_id}, version {key_version}");
         if key_id != 1 {
-            return Err(KeyError::VersionInvalid);
+            return Err(KeyError::InvalidVersion);
         }
 
         // Convert our integer to a native endian byte array
@@ -78,7 +73,7 @@ impl KeyManager for DebugKeyMgmt {
     }
 
     fn key_length(key_id: u32, key_version: u32) -> Result<usize, KeyError> {
-        debug!("DebugKeyMgmt key_length");
+        debug!("DebugKeyMgmt key_length, id {key_id}, version {key_version}");
         // Return the length of our u32 in bytes
         // Just verify our types don't change
         debug_assert_eq!(
@@ -106,7 +101,7 @@ register_plugin! {
             vtype: SysVarConstString,
             name: "test_sysvar_const_string",
             description: "this is a description",
-            options: [SysVarOpt::OptCmdArd],
+            options: [SysVarOpt::OptionalCliArg],
             default: "default value"
         },
         SysVar {
@@ -114,7 +109,7 @@ register_plugin! {
             vtype: SysVarString,
             name: "test_sysvar_string",
             description: "this is a description",
-            options: [SysVarOpt::OptCmdArd],
+            options: [SysVarOpt::OptionalCliArg],
             default: "other default value"
         },
         SysVar {
@@ -122,7 +117,7 @@ register_plugin! {
             vtype: AtomicI32,
             name: "test_sysvar_i32",
             description: "this is a description",
-            options: [SysVarOpt::OptCmdArd],
+            options: [SysVarOpt::OptionalCliArg],
             default: 67
         }
     ]
