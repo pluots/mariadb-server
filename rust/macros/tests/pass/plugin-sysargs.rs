@@ -17,7 +17,7 @@ register_plugin! {
             vtype: SysVarConstString,
             name: "test_sysvar",
             description: "this is a description",
-            options: [SysVarOpt::ReadOnly, SysVarOpt::NoCmdOpt],
+            options: [SysVarOpt::ReadOnly, SysVarOpt::NoCliOption],
             default: "default value"
         }
     ]

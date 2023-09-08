@@ -1,20 +1,17 @@
 //! "show variables" and "system variables"
 
 use std::cell::UnsafeCell;
-use std::ffi::{c_double, c_int, c_long, c_longlong, c_ulong, c_ulonglong, c_void, CStr, CString};
-use std::marker::PhantomPinned;
+use std::ffi::{c_int, c_longlong, c_ulonglong, c_void, CStr, CString};
 use std::mem::ManuallyDrop;
 use std::os::raw::{c_char, c_uint};
 use std::ptr;
-use std::sync::atomic::{self, AtomicBool, AtomicI32, AtomicPtr, AtomicU32, Ordering};
+use std::sync::atomic::{self, AtomicPtr, Ordering};
 use std::sync::Mutex;
 
 use bindings::THD;
 use cstr::cstr;
-use log::{trace, warn};
+use log::trace;
 use mariadb_sys as bindings;
-
-use super::variables_parse::{CliMysqlValue, CliValue};
 
 /// Possible flags for plugin variables
 #[repr(i32)]
@@ -26,15 +23,15 @@ pub enum SysVarOpt {
     /// Variable is read only
     ReadOnly = bindings::PLUGIN_VAR_READONLY as i32,
     /// Variable is not a server variable
-    NoSysVar = bindings::PLUGIN_VAR_NOSYSVAR as i32,
+    NoServerVariable = bindings::PLUGIN_VAR_NOSYSVAR as i32,
     /// No command line option
-    NoCmdOpt = bindings::PLUGIN_VAR_NOCMDOPT as i32,
+    NoCliOption = bindings::PLUGIN_VAR_NOCMDOPT as i32,
     /// No argument for the command line
-    NoCmdArg = bindings::PLUGIN_VAR_NOCMDARG as i32,
+    NoCliArg = bindings::PLUGIN_VAR_NOCMDARG as i32,
     /// Required CLI argument
-    ReqCmdArg = bindings::PLUGIN_VAR_RQCMDARG as i32,
+    RequiredCliArg = bindings::PLUGIN_VAR_RQCMDARG as i32,
     /// Optional CLI argument
-    OptCmdArd = bindings::PLUGIN_VAR_OPCMDARG as i32,
+    OptionalCliArg = bindings::PLUGIN_VAR_OPCMDARG as i32,
     /// Variable is deprecated
     Deprecated = bindings::PLUGIN_VAR_DEPRECATED as i32,
     // String needs memory allocation - don't expose this
@@ -47,6 +44,7 @@ type SVInfoInner<T> = ManuallyDrop<UnsafeCell<T>>;
 /// structures on C. Kind of yucky to work with but I think the generic union is
 /// a lot more clear.
 #[repr(C)]
+#[allow(dead_code)]
 pub union SysVarInfoU {
     bool_t: SVInfoInner<bindings::sysvar_bool_t>,
     str_t: SVInfoInner<bindings::sysvar_str_t>,
@@ -70,6 +68,7 @@ impl SysVarOpt {
 }
 
 /// `bindings::mysql_var_update_func` without the `Option`
+#[allow(dead_code)]
 type SvUpdateFn =
     unsafe extern "C" fn(*mut THD, *mut bindings::st_mysql_sys_var, *mut c_void, *const c_void);
 
@@ -97,6 +96,7 @@ pub unsafe trait SysVarInterface: Sized {
     /// - `var`: pointer to the c struct
     /// - `var_ptr`: where to stash the value
     /// - `save`: stash from the `check` function
+    #[allow(unused_variables)]
     unsafe extern "C" fn update_wrap(
         thd: *mut THD,
         var: *mut bindings::st_mysql_sys_var,
@@ -112,6 +112,7 @@ pub unsafe trait SysVarInterface: Sized {
     }
 
     /// Update function: override this if it is pointed to by `UPDATE_FUNC`
+    #[allow(unused_variables)]
     unsafe fn update(&self, var: &Self::CStructType, save: Self::Intermediate) {
         unimplemented!()
     }
@@ -122,12 +123,13 @@ pub unsafe trait SysVarInterface: Sized {
 /// Consider this very unstable because I don't 100% understand what the SQL
 /// side of things does with the malloc / const options
 ///
-/// Bug: it seems like after updating, the SQL server cannot read the
+/// BUG: it seems like after updating, the SQL server cannot read the
 /// variable... but we can? Do we need to do more in our `update` function?
 #[repr(transparent)]
 pub struct SysVarConstString(AtomicPtr<c_char>);
 
 impl SysVarConstString {
+    /// Create a new string variable
     pub const fn new() -> Self {
         Self(AtomicPtr::new(std::ptr::null_mut()))
     }
@@ -225,7 +227,7 @@ unsafe impl SysVarInterface for SysVarString {
         def_val: cstr!("").as_ptr().cast_mut(),
     };
 
-    unsafe fn update(&self, var: &Self::CStructType, save: Self::Intermediate) {
+    unsafe fn update(&self, _var: &Self::CStructType, save: Self::Intermediate) {
         let to_save = save
             .as_ref()
             .map(|ptr| unsafe { CStr::from_ptr(ptr).to_owned() });
@@ -298,7 +300,7 @@ macro_rules! atomic_svinterface {
                 $( $extra_struct_fields )*
             };
 
-            unsafe fn update(&self, var: &Self::CStructType, save: Self::Intermediate) {
+            unsafe fn update(&self, _var: &Self::CStructType, save: Self::Intermediate) {
                 trace!(
                     "updated {} system variable to '{:?}'",
                     std::any::type_name::<$atomic_type>(), save

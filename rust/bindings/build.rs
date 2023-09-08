@@ -145,8 +145,26 @@ fn run_bindgen_with_includes(search_paths: &[String]) -> Result<Bindings, Bindge
         .blocklist_item("std_basic_string")
         .blocklist_item("std_collate.*")
         .blocklist_item("__gnu_cxx.*")
+        // We redefine this to use the variables from `st_service_ref` since they don't seem to
+        // import with the expected values (a static vs. dynamic thing)
+        .blocklist_item("sql_service")
         // Finish the builder and generate the bindings.
         .generate()
+}
+
+/// Tell cargo how to find libmysqlclient.so
+fn specify_link() {
+    // FIXME: this is a bit sloppy
+    println!("cargo:rustc-link-lib=dylib=mariadbclient");
+    // println!("cargo:rustc-link-lib=static=mysqlservices");
+
+    // // todo: change to cmake_link_dirs, split by `;`
+    // if let Ok(cmake_dir) = env::var("CMAKE_BINARY_DIR") {
+    //     println!("cargo:rustc-link-search=native={cmake_dir}/libservices");
+    // }
+    // println!("cargo:rustc-link-lib=static=libmysqlservices");
+
+    // println!("cargo:rustc-link-lib=static=mysqlservices");
 }
 
 fn main() {
@@ -164,4 +182,6 @@ fn main() {
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("couldn't write bindings");
+
+    specify_link();
 }

@@ -1,35 +1,57 @@
-use std::ffi::{c_int, c_uint, c_void};
+use std::ffi::{c_int, c_void};
 use std::{env, ptr};
 
-use super::{Init, License, Maturity, PluginType};
+use super::{Init, InitError};
 use crate::{bindings, configure_logger};
 
-/// Trait for easily wrapping init/deinit functions
-pub trait WrapInit: Init {
-    #[must_use]
-    unsafe extern "C" fn wrap_init(_: *mut c_void) -> c_int {
-        init_common();
-        match Self::init() {
-            Ok(_) => 0,
-            Err(_) => 1,
-        }
-    }
+/// Meta that we generate in the proc macro, which we can use to get information about our type in
+/// wrappers
+pub trait PluginMeta {
+    const NAME: &'static str;
+}
 
-    #[must_use]
-    unsafe extern "C" fn wrap_deinit(_: *mut c_void) -> c_int {
-        match Self::deinit() {
-            Ok(_) => 0,
-            Err(_) => 1,
+/// Wrap the init call
+#[must_use]
+pub unsafe extern "C" fn wrap_init_fn<P: PluginMeta, I: Init>(_: *mut c_void) -> c_int {
+    init_common();
+    match I::init() {
+        Ok(()) => {
+            log::info!("loaded plugin {}", P::NAME);
+            0
+        }
+        Err(InitError) => {
+            log::error!("failed to load plugin {}", P::NAME);
+            1
         }
     }
 }
 
-impl<T> WrapInit for T where T: Init {}
+/// Wrap the deinit call
+#[must_use]
+pub unsafe extern "C" fn wrap_deinit_fn<P: PluginMeta, I: Init>(_: *mut c_void) -> c_int {
+    match I::deinit() {
+        Ok(()) => {
+            log::info!("unloaded plugin {}", P::NAME);
+            0
+        }
+        Err(InitError) => {
+            log::error!("failed to unload plugin {}", P::NAME);
+            1
+        }
+    }
+}
 
 /// Init call for plugins that don't provide a custom init function
-#[inline]
-pub unsafe extern "C" fn wrap_init_notype(_: *mut c_void) -> c_int {
+#[must_use]
+pub unsafe extern "C" fn default_init_notype<P: PluginMeta>(_: *mut c_void) -> c_int {
     init_common();
+    log::info!("loaded plugin {}", P::NAME);
+    0
+}
+
+#[must_use]
+pub unsafe extern "C" fn default_deinit_notype<P: PluginMeta>(_: *mut c_void) -> c_int {
+    log::info!("unloaded plugin {}", P::NAME);
     0
 }
 

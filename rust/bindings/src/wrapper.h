@@ -4,3 +4,4 @@
 #include <mysql.h>
 #include <mysql/plugin.h>
 #include <mysql/plugin_encryption.h>
+#include <service_versions.h>

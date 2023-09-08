@@ -6,8 +6,8 @@ use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::{parse_macro_input, Error, Expr, FieldValue, Ident, Token};
 
-use crate::fields::plugin::{ALL_FIELDS, ENCR_OPT_FIELDS, ENCR_REQ_FIELDS, REQ_FIELDS};
-use crate::helpers::{expect_bool, expect_litstr, make_ident};
+use crate::fields::plugin::{ALL_FIELDS, ALWAYS_REQ_FIELDS, ENCR_OPT_FIELDS, ENCR_REQ_FIELDS};
+use crate::helpers::{expect_bool, expect_litstr, expect_ty, make_ident};
 use crate::parse_vars::Variables;
 
 /// Entrypoint for this proc macro
@@ -35,6 +35,7 @@ struct PluginInfo {
     version: Option<Expr>,
     init: Option<Expr>,
     encryption: Option<Expr>,
+    decryption: Option<Expr>,
     variables: Option<Expr>,
 }
 
@@ -64,6 +65,7 @@ impl Parse for PluginInfo {
                 "version" => ret.version = Some(expr),
                 "init" => ret.init = Some(expr),
                 "encryption" => ret.encryption = Some(expr),
+                "decryption" => ret.decryption = Some(expr),
                 "variables" => ret.variables = Some(expr),
                 _ => {
                     return Err(Error::new_spanned(
@@ -95,6 +97,7 @@ impl PluginInfo {
             version: None,
             init: None,
             encryption: None,
+            decryption: None,
             variables: None,
         }
     }
@@ -117,10 +120,11 @@ impl PluginInfo {
             (&self.version, "version"),
             (&self.init, "init"),
             (&self.encryption, "encryption"),
+            (&self.decryption, "decryption"),
             (&self.variables, "sysvars"),
         ];
 
-        let mut req = REQ_FIELDS.to_vec();
+        let mut req = ALWAYS_REQ_FIELDS.to_vec();
         req.extend_from_slice(required);
 
         for req_field in &req {
@@ -152,7 +156,7 @@ impl PluginInfo {
             return Ok(ret);
         };
         let vars: Variables = syn::parse(vars_decl.to_token_stream().into())?;
-        let name = expect_litstr(&self.name)?.value();
+        let name = expect_litstr(self.name.as_ref())?.value();
         let sysvar_arr_ident = Ident::new(&format!("_plugin_{name}_sysvars"), Span::call_site());
 
         let sysvar_bodies = &vars.sys;
@@ -169,6 +173,7 @@ impl PluginInfo {
         ret.sysvar_body = quote! {
             #( #sysvar_bodies )*
 
+            #[allow(non_upper_case_globals)]
             pub static #sysvar_arr_ident:
                 [#usynccell<*mut ::mariadb::bindings::sysvar_common_t>; #len]
                 =
@@ -190,43 +195,73 @@ impl PluginInfo {
 
     /// Turn `self` into a tokenstream of a single `st_maria_plugin` for an
     /// encryption struct. Uses `idx` to mangle the name and avoid conflicts
+    #[allow(clippy::too_many_lines)]
     fn into_encryption_struct(self) -> syn::Result<PluginDef> {
         self.validate_as_encryption()?;
 
-        let type_ = &self.main_ty;
-        let name = expect_litstr(&self.name)?;
+        let main_ty = &self.main_ty;
+        let name = expect_litstr(self.name.as_ref())?;
         let plugin_st_name = Ident::new(&format!("_ST_PLUGIN_{}", name.value()), Span::call_site());
 
-        let ty_as_wkeymgt = quote! { <#type_ as ::mariadb::plugin::internals::WrapKeyMgr> };
-        let ty_as_wenc = quote! { <#type_ as ::mariadb::plugin::internals::WrapEncryption> };
+        let ty_as_wkeymgt = quote! { <#main_ty as ::mariadb::plugin::internals::WrapKeyMgr> };
         let interface_version = quote! { ::mariadb::bindings::MariaDB_ENCRYPTION_INTERFACE_VERSION as ::std::ffi::c_int };
         let get_key_vers = quote! { Some(#ty_as_wkeymgt::wrap_get_latest_key_version) };
         let get_key = quote! { Some(#ty_as_wkeymgt::wrap_get_key) };
         let variables = self.make_variables()?;
-        let variables_body = variables.sysvar_body;
+        let variable_body = variables.sysvar_body;
+
+        let meta_impl = quote! {
+            impl ::mariadb::plugin::internals::PluginMeta for #main_ty {
+                const NAME: &'static str = #name;
+            }
+        };
+
+        let mut enc_dec_types = None;
+
+        if let Some(encr_value) = self.encryption {
+            // expect_bool(&self.encryption)? {
+            let encr_bool_res = expect_bool(Some(&encr_value));
+            if encr_bool_res.is_ok() {
+                assert!(
+                    self.decryption.is_none(),
+                    "cannot specify decryption type but not encryption"
+                );
+            };
+
+            if matches!(encr_bool_res, Ok(true)) {
+                // Use encryption on the main type if specified
+                let main_tokens = main_ty.to_token_stream();
+                enc_dec_types = Some((main_tokens.clone(), main_tokens));
+            } else if encr_bool_res.is_err() {
+                let enc_ty = expect_ty(&encr_value)?;
+                let dec_ty = match self.decryption {
+                    Some(ref v) => expect_ty(v)?,
+                    None => enc_ty,
+                };
+                enc_dec_types = Some((enc_ty.to_token_stream(), dec_ty.to_token_stream()));
+            }
+        }
 
         let (crypt_size, crypt_init, crypt_update, crypt_finish, crypt_len);
-
-        if expect_bool(&self.encryption)? {
-            // Use encryption if given
-            crypt_size = quote! { Some(#ty_as_wenc::wrap_crypt_ctx_size) };
-            crypt_init = quote! { Some(#ty_as_wenc::wrap_crypt_ctx_init) };
-            crypt_update = quote! { Some(#ty_as_wenc::wrap_crypt_ctx_update) };
-            crypt_finish = quote! { Some(#ty_as_wenc::wrap_crypt_ctx_finish) };
-            crypt_len = quote! { Some(#ty_as_wenc::wrap_encrypted_length) };
+        if let Some((enc_ty, dec_ty)) = enc_dec_types {
+            crypt_size = quote! { Some(::mariadb::plugin::internals::wrap_crypt_ctx_size::<#enc_ty, #dec_ty>) };
+            crypt_init = quote! { Some(::mariadb::plugin::internals::wrap_crypt_ctx_init::<#enc_ty, #dec_ty>) };
+            crypt_update = quote! { Some(::mariadb::plugin::internals::wrap_crypt_ctx_update::<#enc_ty, #dec_ty>) };
+            crypt_finish = quote! { Some(::mariadb::plugin::internals::wrap_crypt_ctx_finish::<#enc_ty, #dec_ty>) };
+            crypt_len =
+                quote! { Some(::mariadb::plugin::internals::wrap_encrypted_length::<#enc_ty>) };
         } else {
             // Default to builtin encryption
             let none = quote! { None };
-            (
-                crypt_size,
-                crypt_init,
-                crypt_update,
-                crypt_finish,
-                crypt_len,
-            ) = (none.clone(), none.clone(), none.clone(), none.clone(), none);
+            crypt_size = none.clone();
+            crypt_init = none.clone();
+            crypt_update = none.clone();
+            crypt_finish = none.clone();
+            crypt_len = none;
         }
 
         let info_struct = quote! {
+            #[allow(non_upper_case_globals)]
             static #plugin_st_name: ::mariadb::internals::UnsafeSyncCell<
                 ::mariadb::bindings::st_mariadb_encryption,
             > = unsafe {
@@ -245,11 +280,11 @@ impl PluginInfo {
             };
         };
 
-        let version_str = &expect_litstr(&self.version)?.value();
+        let version_str = &expect_litstr(self.version.as_ref())?.value();
         let version_int =
             version_int(version_str).map_err(|e| Error::new_spanned(&self.version, e))?;
-        let author = expect_litstr(&self.author)?;
-        let description = expect_litstr(&self.description)?;
+        let author = expect_litstr(self.author.as_ref())?;
+        let description = expect_litstr(self.description.as_ref())?;
         let license = self.license.unwrap();
         let maturity = self.maturity.unwrap();
         let ptype = self.ptype.unwrap();
@@ -258,12 +293,15 @@ impl PluginInfo {
         // We always initialize the logger, maybe do init/deinit if struct requires
         let (fn_deinit, fn_init);
         if let Some(init_ty) = self.init {
-            let ty_as_init = quote! { <#init_ty as ::mariadb::plugin::internals::WrapInit> };
-            fn_init = quote! { Some(#ty_as_init::wrap_init) };
-            fn_deinit = quote! { Some(#ty_as_init::wrap_deinit) };
+            fn_init =
+                quote! { Some(::mariadb::plugin::internals::wrap_init_fn::<#main_ty, #init_ty>) };
+            fn_deinit =
+                quote! { Some(::mariadb::plugin::internals::wrap_deinit_fn::<#main_ty, #init_ty>) };
         } else {
-            fn_init = quote! { Some(::mariadb::plugin::internals::wrap_init_notype) };
-            fn_deinit = quote! { None };
+            fn_init =
+                quote! { Some(::mariadb::plugin::internals::default_init_notype::<#main_ty>) };
+            fn_deinit =
+                quote! { Some(::mariadb::plugin::internals::default_deinit_notype::<#main_ty>) };
         }
 
         let plugin_struct = quote! {
@@ -286,9 +324,10 @@ impl PluginInfo {
 
         Ok(PluginDef {
             name: name.value(),
+            meta_impl,
             info_struct,
             plugin_struct,
-            variable_body: variables_body,
+            variable_body,
         })
     }
 }
@@ -304,6 +343,7 @@ struct VariableBodies {
 /// applicable, plus the struct of `st_maria_plugin` that references it
 struct PluginDef {
     name: String,
+    meta_impl: TokenStream,
     info_struct: TokenStream,
     plugin_struct: TokenStream,
     variable_body: TokenStream,
@@ -328,6 +368,7 @@ impl PluginDef {
         let null_ps = quote! { ::mariadb::plugin::internals::new_null_plugin_st() };
 
         let info_st = self.info_struct;
+        let meta_impl = self.meta_impl;
         let plugin_st = self.plugin_struct;
         let variable_body = self.variable_body;
 
@@ -335,27 +376,33 @@ impl PluginDef {
 
         let ret: TokenStream = quote! {
             #info_st
+            #meta_impl
             #variable_body
 
             // Different config based on statically or dynamically lynked
             #[no_mangle]
             #[cfg(make_static_lib)]
+            #[allow(non_upper_case_globals)]
             static #vers_ident_stc: ::std::ffi::c_int = #version_val;
 
             #[no_mangle]
             #[cfg(not(make_static_lib))]
+            #[allow(non_upper_case_globals)]
             static #vers_ident_dyn: ::std::ffi::c_int = #version_val;
 
             #[no_mangle]
             #[cfg(make_static_lib)]
+            #[allow(non_upper_case_globals)]
             static #size_ident_stc: ::std::ffi::c_int = #size_val;
 
             #[no_mangle]
             #[cfg(not(make_static_lib))]
+            #[allow(non_upper_case_globals)]
             static #size_ident_dyn: ::std::ffi::c_int = #size_val;
 
             #[no_mangle]
             #[cfg(make_static_lib)]
+            #[allow(non_upper_case_globals)]
             static #decl_ident_stc: [#usynccell<#plugin_ty>; 2] = unsafe { [
                 #usynccell::new(#plugin_st),
                 #usynccell::new(#null_ps),
@@ -363,6 +410,7 @@ impl PluginDef {
 
             #[no_mangle]
             #[cfg(not(make_static_lib))]
+            #[allow(non_upper_case_globals)]
             static #decl_ident_dyn: [#usynccell<#plugin_ty>; 2] = unsafe { [
                 #usynccell::new(#plugin_st),
                 #usynccell::new(#null_ps),

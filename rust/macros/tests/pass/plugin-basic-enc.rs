@@ -41,8 +41,9 @@ fn main() {
     assert_eq!(author, "Test Author");
     assert_eq!(descr, "Debug key management plugin");
     assert_eq!(license, License::Gpl as i32);
-    assert!(init.is_some()); // we always have an init function to setup logging
-    assert!(deinit.is_none());
+    // we always init and deinit functions to log registration / deregistration
+    assert!(init.is_some());
+    assert!(deinit.is_some());
     assert_eq!(version, 0x0102);
     assert!(status_vars.is_null());
     assert!(system_vars.is_null());

@@ -1,5 +1,5 @@
 [package]
-name = "encryption-rs"
+name = "encryption-aes-rs"
 version = "0.1.0"
 edition = '2021'
 
@@ -8,6 +8,5 @@ crate-type = ["cdylib"]
 
 [dependencies]
 mariadb = { path = "../../mariadb" }
+encryption-common = { path = "../../common/encryption-common"}
 aes-gcm = "0.10"
-sha2 = "0.10"
-rand = "0.8"
