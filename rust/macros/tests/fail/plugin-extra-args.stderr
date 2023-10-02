@@ -1,5 +1,5 @@
 error: unexpected field 'extra'
-  --> tests/fail/01-extra-args.rs:14:5
+  --> tests/fail/plugin-extra-args.rs:14:5
    |
 14 |     extra: false
    |     ^^^^^

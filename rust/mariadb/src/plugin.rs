@@ -36,10 +36,10 @@
 //!     maturity: Maturity::Experimental,            // indicate license maturity
 //!     version: "0.1",                              // provide an "a.b" version
 //!     init: ExampleKeyManager,                     // optional: struct implementing Init if needed
-//!     encryption: false,                           // false to use default encryption, true if your
+//!     encryption: false,                           // set to `false` to use default encryption, `true` if your main
 //!                                                  // struct implements 'Encryption`, and another type
 //!                                                  // if a different type should be used for encryption
-//!     decryption: DecryptionContext,               // optional field: if `encryption` is specified as a type
+//!     // decryption: DecryptionContext,            // optional field: if `encryption` is specified as a type
 //!                                                  // but the type that implements `Decryption` is different,
 //!                                                  // it can be specified here
 //!     variables: [                                 // variables should be a list of typed identifiers
@@ -48,7 +48,7 @@
 //!             vtype: SysVarConstString,
 //!             name: "sql_name",
 //!             description: "this is a description",
-//!             options: [SysVarOpt::ReadOnly, SysVarOpt::NoCmdOpt],
+//!             options: [SysVarOpt::ReadOnly, SysVarOpt::NoCliOption],
 //!             default: "something"
 //!         },
 //!     //     SysVar {
