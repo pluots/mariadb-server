@@ -69,7 +69,7 @@ impl Flags {
     }
 
     /// True if encryption is disallowed from appending extra data (no AEADs)
-    pub const fn nopad(&self) -> bool {
+    pub const fn nopad(self) -> bool {
         (self.0 & bindings::ENCRYPTION_FLAG_NOPAD as i32) != 0
     }
 }

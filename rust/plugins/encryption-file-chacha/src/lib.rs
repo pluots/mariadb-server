@@ -156,7 +156,7 @@ impl Decryption for ChaChaCtx {
                 // Dst winds up with the entire source minus the tag
                 let use_dst = &mut dst[..src_data.len()];
 
-                use_dst.copy_from_slice(&src_data);
+                use_dst.copy_from_slice(src_data);
                 cipher
                     .decrypt_in_place_detached(&(*nonce).into(), b"", use_dst, src_tag.into())
                     .map_err(|e| {

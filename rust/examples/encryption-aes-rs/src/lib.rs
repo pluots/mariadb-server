@@ -6,6 +6,8 @@
 //!
 //! This is noisy, prints a ton so it is easy to see what is going on
 
+// FIXME: need to use AES ctr when nopad is true
+
 #![allow(unused)]
 
 use std::cmp::min;
@@ -181,7 +183,7 @@ impl Decryption for TestAes {
         // Dst winds up with the entire source minus the tag
         let use_dst = &mut dst[..src_data.len()];
 
-        use_dst.copy_from_slice(&src_data);
+        use_dst.copy_from_slice(src_data);
         self.cipher
             .decrypt_in_place_detached(&self.nonce.into(), b"", use_dst, src_tag.into())
             .map_err(|e| {

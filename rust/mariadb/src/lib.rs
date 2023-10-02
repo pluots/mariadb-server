@@ -5,6 +5,8 @@
 #![warn(clippy::cast_lossless)]
 #![allow(clippy::option_if_let_else)]
 #![allow(clippy::missing_errors_doc)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::missing_panics_doc)]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::useless_conversion)]
 #![allow(clippy::cast_possible_wrap)]
@@ -68,7 +70,7 @@ fn log_formatter(f: &mut env_logger::fmt::Formatter, record: &log::Record) -> st
 
     if let Some(modpath) = record.module_path() {
         // Write the crate name
-        let first = modpath.split_once(':').map(|v| v.0).unwrap_or(modpath);
+        let first = modpath.split_once(':').map_or(modpath, |v| v.0);
         write!(f, " {first}")?;
     }
 

@@ -1,5 +1,7 @@
 //! Utilities common to encryption plugins
 
+use std::cmp::Ordering;
+
 #[macro_use]
 pub mod file_key_mgmt;
 
@@ -7,13 +9,13 @@ pub mod file_key_mgmt;
 ///
 /// Returns: `(array, input_is_ok, action)`
 pub fn trunc_or_extend<const N: usize>(buf: &[u8]) -> ([u8; N], bool, &'static str) {
-    if buf.len() == N {
-        (buf.try_into().unwrap(), true, "")
-    } else if buf.len() < N {
-        let mut tmp = [0u8; N];
-        tmp[..buf.len()].copy_from_slice(buf);
-        (tmp.try_into().unwrap(), false, "Zero extending")
-    } else {
-        (buf[..N].try_into().unwrap(), false, "Truncating")
+    match buf.len().cmp(&N) {
+        Ordering::Equal => (buf.try_into().unwrap(), true, ""),
+        Ordering::Less => {
+            let mut tmp = [0u8; N];
+            tmp[..buf.len()].copy_from_slice(buf);
+            (tmp, false, "Zero extending")
+        }
+        Ordering::Greater => (buf[..N].try_into().unwrap(), false, "Truncating"),
     }
 }
