@@ -1,7 +1,7 @@
-use std::ffi::{c_int, c_uint, c_void};
+use std::ffi::{c_int, c_void};
 use std::{env, ptr};
 
-use super::{Init, InitError, License, Maturity, PluginType};
+use super::{Init, InitError};
 use crate::{bindings, configure_logger};
 
 /// Meta that we generate in the proc macro, which we can use to get information about our type in

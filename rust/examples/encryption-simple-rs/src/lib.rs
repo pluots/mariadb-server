@@ -6,8 +6,6 @@
 //!
 //! This is noisy, prints a ton so it is easy to see what is going on
 
-#![allow(unused)]
-
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
@@ -93,7 +91,7 @@ impl KeyManager for EncryptionExampleRs {
     fn get_latest_key_version(key_id: u32) -> Result<u32, KeyError> {
         info!("get_latest_key_version id {key_id}");
         let mut guard = KEY_VERSIONS.lock().unwrap();
-        let mut vers = guard.as_mut().unwrap();
+        let vers = guard.as_mut().unwrap();
         Ok(vers.update_returning_version())
     }
 
@@ -107,7 +105,7 @@ impl KeyManager for EncryptionExampleRs {
         if dst.len() < output_size {
             return Err(KeyError::BufferTooSmall);
         }
-        let mut hasher = Sha256::new();
+        let hasher = Sha256::new();
         dst[..output_size].copy_from_slice(&hasher.finalize());
         Ok(())
     }

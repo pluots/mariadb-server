@@ -1,20 +1,17 @@
 //! "show variables" and "system variables"
 
 use std::cell::UnsafeCell;
-use std::ffi::{c_double, c_int, c_long, c_longlong, c_ulong, c_ulonglong, c_void, CStr, CString};
-use std::marker::PhantomPinned;
+use std::ffi::{c_int, c_longlong, c_ulonglong, c_void, CStr, CString};
 use std::mem::ManuallyDrop;
 use std::os::raw::{c_char, c_uint};
 use std::ptr;
-use std::sync::atomic::{self, AtomicBool, AtomicI32, AtomicPtr, AtomicU32, Ordering};
+use std::sync::atomic::{self, AtomicPtr, Ordering};
 use std::sync::Mutex;
 
 use bindings::THD;
 use cstr::cstr;
-use log::{trace, warn};
+use log::trace;
 use mariadb_sys as bindings;
-
-use super::variables_parse::{CliMysqlValue, CliValue};
 
 /// Possible flags for plugin variables
 #[repr(i32)]
@@ -47,6 +44,7 @@ type SVInfoInner<T> = ManuallyDrop<UnsafeCell<T>>;
 /// structures on C. Kind of yucky to work with but I think the generic union is
 /// a lot more clear.
 #[repr(C)]
+#[allow(dead_code)]
 pub union SysVarInfoU {
     bool_t: SVInfoInner<bindings::sysvar_bool_t>,
     str_t: SVInfoInner<bindings::sysvar_str_t>,
@@ -70,6 +68,7 @@ impl SysVarOpt {
 }
 
 /// `bindings::mysql_var_update_func` without the `Option`
+#[allow(dead_code)]
 type SvUpdateFn =
     unsafe extern "C" fn(*mut THD, *mut bindings::st_mysql_sys_var, *mut c_void, *const c_void);
 
@@ -97,6 +96,7 @@ pub unsafe trait SysVarInterface: Sized {
     /// - `var`: pointer to the c struct
     /// - `var_ptr`: where to stash the value
     /// - `save`: stash from the `check` function
+    #[allow(unused_variables)]
     unsafe extern "C" fn update_wrap(
         thd: *mut THD,
         var: *mut bindings::st_mysql_sys_var,
@@ -112,6 +112,7 @@ pub unsafe trait SysVarInterface: Sized {
     }
 
     /// Update function: override this if it is pointed to by `UPDATE_FUNC`
+    #[allow(unused_variables)]
     unsafe fn update(&self, var: &Self::CStructType, save: Self::Intermediate) {
         unimplemented!()
     }
@@ -226,7 +227,7 @@ unsafe impl SysVarInterface for SysVarString {
         def_val: cstr!("").as_ptr().cast_mut(),
     };
 
-    unsafe fn update(&self, var: &Self::CStructType, save: Self::Intermediate) {
+    unsafe fn update(&self, _var: &Self::CStructType, save: Self::Intermediate) {
         let to_save = save
             .as_ref()
             .map(|ptr| unsafe { CStr::from_ptr(ptr).to_owned() });
@@ -299,7 +300,7 @@ macro_rules! atomic_svinterface {
                 $( $extra_struct_fields )*
             };
 
-            unsafe fn update(&self, var: &Self::CStructType, save: Self::Intermediate) {
+            unsafe fn update(&self, _var: &Self::CStructType, save: Self::Intermediate) {
                 trace!(
                     "updated {} system variable to '{:?}'",
                     std::any::type_name::<$atomic_type>(), save

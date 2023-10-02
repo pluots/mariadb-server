@@ -1,10 +1,9 @@
 //! Wrappers needed for the `st_mariadb_encryption` type
 
-use std::cmp::max;
 use std::ffi::{c_int, c_uchar, c_uint, c_void};
 use std::{mem, slice};
 
-use log::{error, warn};
+use log::error;
 use mariadb_sys as bindings;
 
 use super::encryption::{Action, Decryption, Encryption, Flags, KeyError, KeyManager};
@@ -102,7 +101,7 @@ pub unsafe extern "C" fn wrap_crypt_ctx_init<En: Encryption, De: Decryption>(
     key_id: c_uint,
     key_version: c_uint,
 ) -> c_int {
-    /// SAFETY: caller guarantees buffer validity
+    // SAFETY: caller guarantees buffer validity
     let keybuf = slice::from_raw_parts(key, klen.try_into().unwrap());
     let ivbuf = slice::from_raw_parts(iv, ivlen.try_into().unwrap());
     let flags = Flags::new(flags);
@@ -202,9 +201,10 @@ pub unsafe extern "C" fn wrap_encrypted_length<En: Encryption>(
         .unwrap()
 }
 
+#[allow(dead_code)]
 unsafe fn set_buflen_with_check(buflen: *mut c_uint, val: u32) {
     if val > 32 {
-        eprintln!(
+        error!(
             "The default encryption does not seem to allow keys above 32 bits. If the server \
             crashes after this message, that is the likely error"
         );

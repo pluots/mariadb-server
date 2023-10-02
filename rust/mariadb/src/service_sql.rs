@@ -4,6 +4,8 @@
 //! FIXME: I think we need to use a different `GLOBAL_SQL_SERVICE` if statically
 //! linked, but not yet sure where this is
 
+#![allow(unused)]
+
 use std::cell::UnsafeCell;
 use std::ffi::CString;
 use std::marker::PhantomData;

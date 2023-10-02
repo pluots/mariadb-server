@@ -14,16 +14,13 @@
 #![allow(clippy::missing_const_for_fn)]
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::missing_inline_in_public_items)]
-#![allow(unused)]
 
-use std::io::Write as IoWrite;
+use std::io::Write;
 
-use time::{format_description, OffsetDateTime};
 mod common;
 mod helpers;
 pub mod plugin;
 pub mod service_sql;
-use std::fmt::Write;
 
 #[doc(inline)]
 pub use common::*;
@@ -120,6 +117,7 @@ macro_rules! error_once {
 }
 
 /// Provide the name of the calling function (full path)
+#[allow(unused)]
 macro_rules! function_name {
     () => {{
         fn f() {}

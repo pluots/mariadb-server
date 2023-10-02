@@ -16,21 +16,15 @@
 //!
 //! # Update function
 //!
-//!
-//!
 //! - `thd`: thread handle
 //! - `var`: system variable union. SAFETY: must be correct type (caller varifies)
 //! - `save`: pointer to temporary storage
 //! - `value`: user-provided value
 
 use std::cell::UnsafeCell;
-use std::ffi::{c_int, c_void, CStr};
-use std::os::raw::c_char;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::ffi::c_int;
 
-use super::variables::SysVarInfoU;
 use crate::bindings;
-use crate::helpers::str2bool;
 
 /// # Safety
 ///
@@ -82,6 +76,7 @@ use crate::helpers::str2bool;
 //     (*dest).store(new_val_bool, Ordering::Relaxed);
 // }
 
+#[allow(dead_code)]
 #[derive(Debug, PartialEq)]
 pub enum CliValue {
     Int(Option<i64>),
@@ -89,8 +84,10 @@ pub enum CliValue {
     String(Option<String>),
 }
 
+#[allow(dead_code)]
 pub struct CliMysqlValue(UnsafeCell<bindings::st_mysql_value>);
 
+#[allow(dead_code)]
 impl CliMysqlValue {
     /// `item_val_str function`, `item_val_int`, `item_val_real`
     pub(crate) fn value(&self) -> CliValue {

@@ -133,6 +133,7 @@ pub trait Encryption: Sized {
     /// write additional data.
     ///
     /// If init was called with `same_size = true`, `dst` will likely be empty.
+    #[allow(unused_variables)]
     fn finish(&mut self, dst: &mut [u8]) -> Result<usize, EncryptionError> {
         Ok(0)
     }
@@ -146,6 +147,7 @@ pub trait Encryption: Sized {
     ///
     /// Note that if initialization was called with `same_size = true`, this will be ignored. In
     /// that case.
+    #[allow(unused_variables)]
     fn encrypted_length(key_id: u32, key_version: u32, src_len: usize) -> usize {
         src_len
     }
@@ -173,6 +175,7 @@ pub trait Decryption: Sized {
     /// write additional data.
     ///
     /// If init was called with `same_size = true`, `dst` will likely be empty.
+    #[allow(unused_variables)]
     fn finish(&mut self, dst: &mut [u8]) -> Result<usize, EncryptionError> {
         Ok(0)
     }

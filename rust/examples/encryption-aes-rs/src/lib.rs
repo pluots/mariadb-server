@@ -8,25 +8,15 @@
 
 // FIXME: need to use AES ctr when nopad is true
 
-#![allow(unused)]
-
 use std::cmp::min;
-use std::sync::Mutex;
-use std::time::{Duration, Instant};
 
-use aes_gcm::AeadInPlace;
-use aes_gcm::{
-    aead::{Aead, KeyInit, OsRng},
-    Aes256Gcm,
-    Nonce, // Or `Aes128Gcm`
-};
+use aes_gcm::aead::KeyInit;
+use aes_gcm::{AeadInPlace, Aes256Gcm};
 use encryption_common::trunc_or_extend;
 use mariadb::log::{error, info};
 use mariadb::plugin::encryption::{Decryption, Encryption, EncryptionError, KeyError, KeyManager};
 use mariadb::plugin::*;
 use mariadb::warn_once;
-use rand::Rng;
-use sha2::{Digest, Sha256};
 
 /// Length of the AES tag
 const AES256_TAG_LEN: usize = 16;
@@ -51,7 +41,7 @@ struct EncryptionExampleAes;
 
 impl KeyManager for EncryptionExampleAes {
     /// Key version is always 1
-    fn get_latest_key_version(key_id: u32) -> Result<u32, KeyError> {
+    fn get_latest_key_version(_key_id: u32) -> Result<u32, KeyError> {
         Ok(1)
     }
 
@@ -62,7 +52,7 @@ impl KeyManager for EncryptionExampleAes {
         Ok(())
     }
 
-    fn key_length(key_id: u32, key_version: u32) -> Result<usize, KeyError> {
+    fn key_length(_key_id: u32, _key_version: u32) -> Result<usize, KeyError> {
         Ok(8)
     }
 }
@@ -76,11 +66,11 @@ struct TestAes {
 
 impl Encryption for TestAes {
     fn init(
-        key_id: u32,
-        key_version: u32,
+        _key_id: u32,
+        _key_version: u32,
         key: &[u8],
         iv: &[u8],
-        same_size: bool,
+        _same_size: bool,
     ) -> Result<Self, EncryptionError> {
         info!("encrypt init");
         let (cipher, nonce) = init_cipher(key, iv)?;
@@ -148,11 +138,11 @@ impl Encryption for TestAes {
 
 impl Decryption for TestAes {
     fn init(
-        key_id: u32,
-        key_version: u32,
+        _key_id: u32,
+        _key_version: u32,
         key: &[u8],
         iv: &[u8],
-        same_size: bool,
+        _same_size: bool,
     ) -> Result<Self, EncryptionError> {
         info!("decrypt init");
         let (cipher, nonce) = init_cipher(key, iv)?;
@@ -194,7 +184,7 @@ impl Decryption for TestAes {
         dbg!(Ok(src_data.len()))
     }
 
-    fn finish(&mut self, dst: &mut [u8]) -> Result<usize, EncryptionError> {
+    fn finish(&mut self, _dst: &mut [u8]) -> Result<usize, EncryptionError> {
         Ok(0)
     }
 }
