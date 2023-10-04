@@ -149,6 +149,21 @@ fn run_bindgen_with_includes(search_paths: &[String]) -> Result<Bindings, Bindge
         .generate()
 }
 
+/// Tell cargo how to find libmysqlclient.so
+fn specify_link() {
+    // FIXME: this is a bit sloppy
+    println!("cargo:rustc-link-lib=dylib=mariadbclient");
+    println!("cargo:rustc-link-lib=static=mysqlservices");
+
+    // todo: change to cmake_link_dirs, split by `;`
+    if let Ok(cmake_dir) = env::var("CMAKE_BINARY_DIR") {
+        println!("cargo:rustc-link-search=native={cmake_dir}/libservices");
+    }
+    // println!("cargo:rustc-link-lib=static=libmysqlservices");
+
+    // println!("cargo:rustc-link-lib=static=mysqlservices");
+}
+
 fn main() {
     // Tell cargo to invalidate the built crate whenever the wrapper changes
     println!("cargo:rerun-if-changed=src/wrapper.h");
@@ -164,4 +179,6 @@ fn main() {
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("couldn't write bindings");
+
+    specify_link();
 }

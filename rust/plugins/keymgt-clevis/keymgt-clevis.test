@@ -1,0 +1,2 @@
+SET SESSION innodb_default_encryption_key_id=1;
+install plugin clevis_key_management soname 'keymgt_clevis.so';

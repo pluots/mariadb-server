@@ -4,7 +4,9 @@ FROM ubuntu:latest
 
 WORKDIR /checkout
 RUN apt-get update && apt-get install -y \
-    mariadb
+    mariadb-server \
+    libmariadb-dev \
+    binutils
 
 ENV RUST_BACKTRACE=1
 ENV RUST_LOG=debug

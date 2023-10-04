@@ -22,6 +22,9 @@ macro(CONFIGURE_RUST_PLUGINS)
                     ${SSL_INCLUDE_DIRS}
                     ${ZLIB_INCLUDE_DIR})
 
+  # find_library(servlib NAMES "services")
+  # message("LIBPATH ${CMAKE_LIBRARY_PATH} FINDLIBS ${servlib}")
+
   # See cmake_helper.py for the output that we get here. We loop through each
   # plugin
   foreach(entry IN LISTS plugins)
@@ -72,7 +75,8 @@ macro(CONFIGURE_RUST_PLUGINS)
       --package=${cargo_name}
       --quiet
     )
-    set(rustc_extra_args)
+
+    set(rustc_extra_args -L "native=${CMAKE_CURRENT_BINARY_DIR}/libservices")
 
     # Configure debug/release options
     if(CMAKE_BUILD_TYPE MATCHES "Debug")
@@ -91,7 +95,8 @@ macro(CONFIGURE_RUST_PLUGINS)
 
     # Used by build.rs
     set(env_args -E env CMAKE_SOURCE_DIR=${CMAKE_SOURCE_DIR}
-        CMAKE_BINARY_DIR=${CMAKE_BINARY_DIR})
+        CMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
+    )
 
     if(NOT ARG_MODULE_OUTPUT_NAME)
       if(ARG_STORAGE_ENGINE)

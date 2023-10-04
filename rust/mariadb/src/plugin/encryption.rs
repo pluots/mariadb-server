@@ -20,7 +20,7 @@
 // use core::cell::UnsafeCell;
 use mariadb_sys as bindings;
 
-/// A type of error to be used by key functions
+/// Error types returned by key managers
 #[repr(u32)]
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -33,12 +33,15 @@ pub enum KeyError {
     Other = 3,
 }
 
+/// Errors returned by encryption operations
 #[repr(i32)]
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EncryptionError {
-    BadData = bindings::MY_AES_BAD_DATA,
-    BadKeySize = bindings::MY_AES_BAD_KEYSIZE,
+    /// There is an error with the data
+    Data = bindings::MY_AES_BAD_DATA,
+    /// The provided key size is incorrect
+    KeySize = bindings::MY_AES_BAD_KEYSIZE,
     /// Generic error; return this for e.g. insufficient data length
     Other = bindings::MY_AES_OPENSSL_ERROR,
 }
@@ -74,11 +77,7 @@ impl Flags {
     }
 }
 
-/// Implement this trait on a struct that will serve as encryption context
-///
-///
-/// The type of context data that will be passed to various encryption
-/// function calls.
+/// A key maagment implementation with optional key rotation
 #[allow(unused_variables)]
 pub trait KeyManager: Send + Sized {
     // type Context: Send;
@@ -101,7 +100,7 @@ pub trait KeyManager: Send + Sized {
     fn key_length(key_id: u32, key_version: u32) -> Result<usize, KeyError>;
 }
 
-/// Implement this on a type that can encrypt data
+/// Encryption interface; implement this on encryption context
 pub trait Encryption: Sized {
     /// Initialize the encryption context object.
     ///
@@ -126,7 +125,8 @@ pub trait Encryption: Sized {
     /// Update the encryption context with new data, return the number of bytes
     /// written.
     ///
-    /// Do not append the iv to the ciphertext, MariaDB keeps track of it separately.
+    /// Do not append the initialization vector to the ciphertext, MariaDB keeps
+    /// track of it separately.
     fn update(&mut self, src: &[u8], dst: &mut [u8]) -> Result<usize, EncryptionError>;
 
     /// Finish encryption. Usually this performs validation and, in some cases, can be used to
@@ -153,7 +153,7 @@ pub trait Encryption: Sized {
     }
 }
 
-/// Implement this on a type that decrypts data.
+/// Decryption interface; implement this on decryption context
 ///
 /// This can be the same type as [`Encryption`] but does not have to be.
 pub trait Decryption: Sized {
