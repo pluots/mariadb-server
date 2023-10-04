@@ -83,21 +83,20 @@ impl RawConnection {
 
     /// Connect to the local SQL server
     pub(super) fn connect_local(&mut self) -> ClientResult<()> {
-        trace!("Connecting to the local server");
+        log::debug!("connecting to the local server");
         let res = unsafe { global_func!(mysql_real_connect_local_func)(self.0.as_ptr()) };
         self.check_for_errors(ClientError::ConnectError)?;
         if res.is_null() {
-            Ok(())
+            let msg = "connect error, are you already connected?".into();
+            Err(ClientError::ConnectError(0, msg))
         } else {
-            Err(ClientError::ConnectError(
-                0,
-                "unspecified connect error".to_owned(),
-            ))
+            Ok(())
         }
     }
 
     /// Connect to a remote server
     pub fn connect(&mut self, conn_opts: &ConnOpts) -> ClientResult<()> {
+        log::trace!("connecting to the remote server");
         let host = conn_opts.host.as_ref();
         let user = conn_opts.user.as_ref();
         let pw = conn_opts.password.as_ref();
@@ -134,8 +133,10 @@ impl RawConnection {
 
     /// Execute a query
     pub fn query(&mut self, q: &str) -> ClientResult<()> {
+        log::debug!("start query");
         unsafe {
             let p_self: *const Self = self;
+            log::debug!("start query2");
             // mysql_real_query in mariadb_lib.c. Real just means use buffers
             // instead of c strings
             let res = global_func!(mysql_real_query_func)(
@@ -143,15 +144,17 @@ impl RawConnection {
                 q.as_ptr().cast(),
                 q.len().try_into().unwrap(),
             );
+            log::debug!("start query3");
             self.check_for_errors(ClientError::QueryError)?;
+            log::debug!("start query4");
 
             if res == 0 {
+                log::debug!("start query5");
                 Ok(())
             } else {
-                Err(ClientError::QueryError(
-                    0,
-                    "unspecified query error".to_owned(),
-                ))
+                log::debug!("start query6");
+                let msg = "unspecified query error".into();
+                Err(ClientError::QueryError(0, msg))
             }
         }
     }

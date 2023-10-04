@@ -8,8 +8,8 @@ this_path=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
 maria_root="$(dirname "$(dirname "$this_path")")"
 rust_dir=${maria_root}/rust
 script_dir=${rust_dir}/scripts
-dockerfile=${rust_dir}/scripts/Dockerfile
-dockerfile_prebuilt=${rust_dir}/scripts/Dockerfile.prebuilt
+dockerfile=${rust_dir}/scripts/dockerfiles/Dockerfile
+dockerfile_prebuilt=${rust_dir}/scripts/dockerfiles/Dockerfile.prebuilt
 obj_dir=${maria_root}/docker_obj
 
 echo "using root $maria_root"
@@ -30,10 +30,11 @@ docker_name="mdb-plugin-test"
 second_cmd=""
 second_args=()
 
-build_cmd="/checkout/rust/scripts/launch/build_maria.sh"
-test_cmd="/checkout/rust/scripts/launch/run_mtr.sh"
-start_cmd="/checkout/rust/scripts/launch/install_run_maria.sh"
-launch_quick_cmd="/checkout/rust/scripts/launch/launch_quick.sh"
+build_cmd="/checkout/rust/scripts/build_maria.sh"
+copy_plugin_cmd="/checkout/rust/scripts/copy_plugins.sh"
+test_cmd="/checkout/rust/scripts/run_mtr.sh"
+start_cmd="/checkout/rust/scripts/install_run_maria.sh"
+launch_quick_cmd="/checkout/rust/scripts/launch_quick.sh"
 
 make_exports="export BUILD_CMD=$build_cmd && export TEST_CMD=test_cmd && export START_CMD=start_cmd"
 
@@ -75,8 +76,13 @@ elif [ "$1" = "build" ]; then
     command="$make_exports && $build_cmd"
 elif [ "$1" = "rebuild" ]; then
     echo "build while a container is already open"
+
+    orig_docker_name="$docker_name"
     docker_name="mdb-plugin-rebuild"
+    
     command="$make_exports && $build_cmd"
+    second_cmd="$launch"
+    second_args=("exec" "$orig_docker_name" "/bin/bash" "-c" "$copy_plugin_cmd")
 elif [ "$1" = "test" ]; then
     echo "building then testing mariadb"
     command="$make_exports && $build_cmd && $test_cmd"

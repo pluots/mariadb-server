@@ -80,7 +80,7 @@ jobs:
         with:
           load: true
           tags: mdb-test-build:latest
-          file: rust/scripts/Dockerfile
+          file: rust/scripts/dockerfiles/Dockerfile
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new
       - # Temp fix
@@ -98,7 +98,7 @@ jobs:
           --volume $(pwd)/docker_obj:/obj
           mdb-test-build
           /bin/bash -c
-          'rust/scripts/launch/build_maria.sh && rust/scripts/launch/run_mtr.sh'
+          'rust/scripts/build_maria.sh && rust/scripts/run_mtr.sh'
 
   fmt:
     name: "Format (cargo fmt)"

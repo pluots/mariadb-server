@@ -27,12 +27,6 @@ chmod +x /usr/local/bin/start-mdb
 chmod +x /usr/local/bin/kill-mdb
 mkdir /run/mysqld/
 
-export BUILD_DIR=/obj/build-mariadb
+/checkout/rust/scripts/copy_plugins.sh
 
-# Copy built plugins
-ls -d "$BUILD_DIR/rust_target/debug"/* | grep '\.so$' | xargs -iINFILE cp INFILE /usr/lib/mysql/plugin/
-# relfiles=$(ls -d "$BUILD_DIR/rust_target/release"* || true | grep '\.so$')
-
-for f in $(ls -d /usr/lib/mysql/plugin/* | grep -E '/lib\w*\.so$'); do
-    mv "$f" $(echo "$f" | sed -E 's/\/lib(\w*\.so)$/\/\1/g')
-done
+start-mdb
