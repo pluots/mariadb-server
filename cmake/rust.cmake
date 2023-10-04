@@ -178,11 +178,23 @@ macro(CONFIGURE_RUST_PLUGINS)
         VERBATIM
       )
 
+      add_dependencies(${target_name} mysqlservices)
+
+      # IF(CMAKE_SYSTEM_NAME MATCHES AIX)
+      #   TARGET_LINK_OPTIONS(${target} PRIVATE "-Wl,-bE:${CMAKE_SOURCE_DIR}/libservices/mysqlservices_aix.def")
+      # ENDIF()
+
+
       set_target_properties(${target} PROPERTIES PREFIX "")
       if(NOT ARG_CLIENT)
         set_target_properties(${target} PROPERTIES
           COMPILE_DEFINITIONS "MYSQL_DYNAMIC_PLUGIN${version_string}")
       endif()
+
+      IF (NOT ARG_CLIENT)
+      SET_TARGET_PROPERTIES (${target} PROPERTIES
+        COMPILE_DEFINITIONS "MYSQL_DYNAMIC_PLUGIN${version_string}")
+    ENDIF()
 
       # add_custom_target(${target_name} ALL
       #   COMMAND echo "invoking cargo for ${target_name}"

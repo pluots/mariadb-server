@@ -14,6 +14,7 @@ use std::ptr::{self, NonNull};
 mod error;
 mod raw;
 use bindings::sql_service as GLOBAL_SQL_SERVICE;
+use log::trace;
 use raw::RawConnection;
 
 pub use self::error::ClientError;

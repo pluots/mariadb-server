@@ -153,12 +153,12 @@ fn run_bindgen_with_includes(search_paths: &[String]) -> Result<Bindings, Bindge
 fn specify_link() {
     // FIXME: this is a bit sloppy
     println!("cargo:rustc-link-lib=dylib=mariadbclient");
-    println!("cargo:rustc-link-lib=static=mysqlservices");
+    // println!("cargo:rustc-link-lib=static=mysqlservices");
 
-    // todo: change to cmake_link_dirs, split by `;`
-    if let Ok(cmake_dir) = env::var("CMAKE_BINARY_DIR") {
-        println!("cargo:rustc-link-search=native={cmake_dir}/libservices");
-    }
+    // // todo: change to cmake_link_dirs, split by `;`
+    // if let Ok(cmake_dir) = env::var("CMAKE_BINARY_DIR") {
+    //     println!("cargo:rustc-link-search=native={cmake_dir}/libservices");
+    // }
     // println!("cargo:rustc-link-lib=static=libmysqlservices");
 
     // println!("cargo:rustc-link-lib=static=mysqlservices");

@@ -1,5 +1,4 @@
 //! EXAMPLE ONLY: DO NOT USE IN PRODUCTION!
-//!
 #![allow(unused)]
 
 use std::cell::UnsafeCell;
@@ -80,7 +79,10 @@ impl Init for KeyMgtClevis {
     fn init() -> Result<(), InitError> {
         debug!("init for KeyMgtClevis");
 
-        let mut conn = MySqlConn::connect_local().map_err(|_| InitError)?;
+        let mut conn = MySqlConn::connect_local().map_err(|e| {
+            error!("error with local connection: {e}");
+            InitError
+        } )?;
         conn.execute(&format!(
             "CREATE TABLE IF NOT EXISTS {KEY_TABLE} (
                 key_id INT UNSIGNED NOT NULL COMMENT 'MariaDB key_id',

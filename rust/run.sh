@@ -43,14 +43,23 @@ help="USAGE: ./run.sh build|test|shell|quickstart|quickshell [--nobuild --podman
 launch="docker"
 nobuild=""
 
+loopcount=0
 for var in "$@"
 do
+    loopcount=$((loopcount + 1))
+    if [ "$loopcount" -eq 1 ]; then
+        continue
+    fi
+
     if [ "$var" = "--nobuild" ]; then
         nobuild="true"
         echo nobuild set
     elif [ "$var" = "--podman" ]; then
         launch="podman"
         echo podman set
+    else
+        echo "unrecognized argument $var"
+        exit 1
     fi
 done
 
@@ -64,12 +73,21 @@ elif [ "$1" = "shell" ]; then
 elif [ "$1" = "build" ]; then
     echo "building mariadb"
     command="$make_exports && $build_cmd"
+elif [ "$1" = "rebuild" ]; then
+    echo "build while a container is already open"
+    docker_name="mdb-plugin-rebuild"
+    command="$make_exports && $build_cmd"
 elif [ "$1" = "test" ]; then
     echo "building then testing mariadb"
     command="$make_exports && $build_cmd && $test_cmd"
 elif [ "$1" = "start" ]; then
     echo "building then starting mariadb"
-    command="$make_exports && $build_cmd && $start_cmd"3
+    docker_args=("${docker_args[@]}" "-it")
+    command="$make_exports && $build_cmd && $start_cmd"
+elif [ "$1" = "startshell" ]; then
+    echo "launching a shell in a started container"
+    "$launch" exec -it "$docker_name" bash
+    exit
 elif [ "$1" = "quickstart" ]; then
     # Option to avoid reinstalling
     echo "building then launching a preinstalled docker container"
@@ -100,7 +118,7 @@ elif [ "$1" = "quickshell" ]; then
     "$launch" exec -it mdb-plugin-prebuilt bash
     exit
 else
-    echo invalid command
+    echo "invalid command $1"
     exit 1
 fi
 
@@ -116,4 +134,5 @@ echo "run args:" "${docker_args[@]}"
     mdb-rust \
     /bin/bash -c "$command"
 
-"$second_cmd" "${second_args[@]}"
+
+[ -z "$second_cmd" ] || "$second_cmd" "${second_args[@]}"

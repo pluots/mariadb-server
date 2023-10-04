@@ -11,15 +11,24 @@ use std::ptr::NonNull;
 use std::sync::Once;
 use std::{mem, ptr, slice, str};
 
-use bindings::{sql_service as GLOBAL_SQL_SERVICE, sql_service_st};
-
 use super::error::ClientError;
+use crate::internals::UnsafeSyncCell;
 use crate::{bindings, Value};
+
+// HACK: we need to provide a symbols that is the version defined in service_versions.h
+// On load, the symbol gets replaced with the real thing.
+// The C plugins work around this with defines, but I couldn't find a good way to
+// get similar results through bindgen.
+#[no_mangle]
+#[cfg(not(make_static_lib))]
+#[allow(non_upper_case_globals)]
+pub static sql_service: UnsafeSyncCell<*mut bindings::sql_service_st> =
+    unsafe { UnsafeSyncCell::new(0x0101 as _) };
 
 /// Get a function from our global SQL service
 macro_rules! global_func {
     ($fname:ident) => {
-        unsafe { (*GLOBAL_SQL_SERVICE).$fname.unwrap() }
+        unsafe { (*bindings::sql_service).$fname.unwrap() }
     };
 }
 
@@ -74,6 +83,7 @@ impl RawConnection {
 
     /// Connect to the local SQL server
     pub(super) fn connect_local(&mut self) -> ClientResult<()> {
+        trace!("Connecting to the local server");
         let res = unsafe { global_func!(mysql_real_connect_local_func)(self.0.as_ptr()) };
         self.check_for_errors(ClientError::ConnectError)?;
         if res.is_null() {

@@ -20,13 +20,13 @@ scripts/mariadb-install-db --user=mysql
     --plugin-maturity=experimental \
     --log-error=/error.log \
     --general-log=on \
-    --general-log-file=/general.log \
-    --log-bin=on \
-    --encrypt-binlog=on \
-    --innodb-encrypt-log=on \
-    --plugin-load-add='file_key_management_chacha=encryption_chacha' \
-    --loose-file-key-management-filename=/file-keys.txt \
-    --loose-file-key-management-chacha-filename=/file-keys.txt &
+    --general-log-file=/general.log &
+    # --log-bin=on \
+    # --encrypt-binlog=on \
+    # --innodb-encrypt-log=on \
+    # --plugin-load-add='file_key_management_chacha=encryption_chacha' \
+    # --loose-file-key-management-filename=/file-keys.txt \
+    # --loose-file-key-management-chacha-filename=/file-keys.txt &
 tail -f /error.log
 
 # --plugin-load-add='encryption_example_aes=example_encryption_aes_rs'
