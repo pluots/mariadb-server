@@ -79,7 +79,7 @@ impl Flags {
 
 /// A key maagment implementation with optional key rotation
 #[allow(unused_variables)]
-pub trait KeyManager: Send + Sized {
+pub trait KeyManager: Sized {
     // type Context: Send;
 
     /// Get the latest version of a key ID. Return `VersionInvalid` if not found.

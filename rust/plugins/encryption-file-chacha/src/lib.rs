@@ -190,7 +190,7 @@ fn init_cipher(in_key: &[u8], in_iv: &[u8], same_size: bool) -> Result<ChaChaCtx
     }
 
     if same_size {
-        let cipher = ChaCha20::new(&key.into(), &nonce.into());
+        let cipher = <ChaCha20 as KeyIvInit>::new(&key.into(), &nonce.into());
         Ok(ChaChaCtx::Stream(cipher))
     } else {
         let cipher = ChaCha20Poly1305::new(&key.into());
