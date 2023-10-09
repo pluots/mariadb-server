@@ -145,6 +145,9 @@ fn run_bindgen_with_includes(search_paths: &[String]) -> Result<Bindings, Bindge
         .blocklist_item("std_basic_string")
         .blocklist_item("std_collate.*")
         .blocklist_item("__gnu_cxx.*")
+        // We redefine this to use the variables from `st_service_ref` since they don't seem to
+        // import with the expected values (a static vs. dynamic thing)
+        .blocklist_item("sql_service")
         // Finish the builder and generate the bindings.
         .generate()
 }

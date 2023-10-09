@@ -1,9 +1,5 @@
 //! Safe API for `include/mysql/service_sql.h`
 
-//!
-//! FIXME: I think we need to use a different `GLOBAL_SQL_SERVICE` if statically
-//! linked, but not yet sure where this is
-
 #![allow(unused)]
 
 use std::cell::UnsafeCell;
@@ -13,9 +9,8 @@ use std::ptr::{self, NonNull};
 
 mod error;
 mod raw;
-use bindings::sql_service as GLOBAL_SQL_SERVICE;
 use log::trace;
-use raw::RawConnection;
+use raw::MySql;
 
 pub use self::error::ClientError;
 use self::raw::{ClientResult, FetchedRow, RState, RawResult};
@@ -24,7 +19,7 @@ use crate::bindings;
 use crate::helpers::UnsafeSyncCell;
 
 /// A connection to a local or remote SQL server
-pub struct MySqlConn(RawConnection);
+pub struct MySqlConn(MySql);
 
 impl MySqlConn {
     /// Connect to the local server
@@ -34,7 +29,7 @@ impl MySqlConn {
     /// Error if the client could not connect
     #[inline]
     pub fn connect_local() -> ClientResult<Self> {
-        let mut conn = RawConnection::new();
+        let mut conn = MySql::new();
         conn.connect_local()?;
         Ok(Self(conn))
     }

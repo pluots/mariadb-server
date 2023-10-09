@@ -38,15 +38,36 @@ launch_quick_cmd="/checkout/rust/scripts/launch_quick.sh"
 
 make_exports="export BUILD_CMD=$build_cmd && export TEST_CMD=test_cmd && export START_CMD=start_cmd"
 
-help="USAGE: ./run.sh build|test|shell|quickstart|quickshell [--nobuild --podman]"
+help=$(cat <<-END
+USAGE: ./run.sh [action] [flags]
+
+Actions:
+    build: build from source and exit
+    rebuild: rebuild files while a server is running, to avoid startup time
+    shell: build from source then enter a shell with the built files
+    test: build from source then test with MTR
+    start: build from source then launch the server
+    startshell: launch a shell on a started container
+    quickstart: build plugins from source, launch a prebuilt MariaDB container,
+        copy the plugins
+    quickshell: enter a shell on a container started with 'quickstart'
+Flags:
+    --nobuild: when used with 'quickstart', don't rebuild before launching
+    --podman: use 'podman' instead of 'docker'
+
+All build actions take place in docker, output are in 'docker_obj'
+END
+)
+
 
 # defaults
-launch="docker"
+launcher="docker"
 nobuild=""
 
 loopcount=0
 for var in "$@"
 do
+    # Check all args, skip the first
     loopcount=$((loopcount + 1))
     if [ "$loopcount" -eq 1 ]; then
         continue
@@ -60,6 +81,7 @@ do
         echo podman set
     else
         echo "unrecognized argument $var"
+        echo "$help"
         exit 1
     fi
 done
@@ -81,7 +103,7 @@ elif [ "$1" = "rebuild" ]; then
     docker_name="mdb-plugin-rebuild"
     
     command="$make_exports && $build_cmd"
-    second_cmd="$launch"
+    second_cmd="$launcher"
     second_args=("exec" "$orig_docker_name" "/bin/bash" "-c" "$copy_plugin_cmd")
 elif [ "$1" = "test" ]; then
     echo "building then testing mariadb"
@@ -92,15 +114,15 @@ elif [ "$1" = "start" ]; then
     command="$make_exports && $build_cmd && $start_cmd"
 elif [ "$1" = "startshell" ]; then
     echo "launching a shell in a started container"
-    "$launch" exec -it "$docker_name" bash
+    "$launcher" exec -it "$docker_name" bash
     exit
 elif [ "$1" = "quickstart" ]; then
     # Option to avoid reinstalling
     echo "building then launching a preinstalled docker container"
-    "$launch" build -f "$dockerfile_prebuilt" --tag mdb-prebuilt-img .
+    "$launcher" build -f "$dockerfile_prebuilt" --tag mdb-prebuilt-img .
 
     command="$build_cmd"
-    second_cmd="$launch"
+    second_cmd="$launcher"
     second_args=(
         run
         "${docker_args[@]}"
@@ -110,7 +132,7 @@ elif [ "$1" = "quickstart" ]; then
         "mdb-prebuilt-img"
         "/bin/bash"
         "-c"
-        "$launch_quick_cmd && /bin/bash"
+        "$launcher_quick_cmd && /bin/bash"
     )
 
     if [ "$nobuild" = "true" ]; then
@@ -121,19 +143,20 @@ elif [ "$1" = "quickstart" ]; then
 elif [ "$1" = "quickshell" ]; then
     # Option to avoid reinstalling
     echo "launching shell in quickstart container"
-    "$launch" exec -it mdb-plugin-prebuilt bash
+    "$launcher" exec -it mdb-plugin-prebuilt bash
     exit
 else
     echo "invalid command $1"
+    echo "$help"
     exit 1
 fi
 
 echo "command: $command"
 echo "run args:" "${docker_args[@]}"
     
-"$launch" build --file "$dockerfile" --tag mdb-rust .
+"$launcher" build --file "$dockerfile" --tag mdb-rust .
 
-"$launch" run \
+"$launcher" run \
     --workdir /obj \
     "${docker_args[@]}" \
     --name "$docker_name" \

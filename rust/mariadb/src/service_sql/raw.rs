@@ -19,6 +19,10 @@ use crate::{bindings, Value};
 // On load, the symbol gets replaced with the real thing.
 // The C plugins work around this with defines, but I couldn't find a good way to
 // get similar results through bindgen.
+//
+// FIXME: I think this is different for static linking but I'm not sure how
+//
+// This all gets loaded in sql_plugin.cc `plugin_dl_add`
 #[no_mangle]
 #[cfg(not(make_static_lib))]
 #[allow(non_upper_case_globals)]
@@ -28,7 +32,7 @@ pub static sql_service: UnsafeSyncCell<*mut bindings::sql_service_st> =
 /// Get a function from our global SQL service
 macro_rules! global_func {
     ($fname:ident) => {
-        unsafe { (*bindings::sql_service).$fname.unwrap() }
+        unsafe { (**sql_service.get()).$fname.unwrap() }
     };
 }
 
@@ -43,7 +47,7 @@ impl RState for Store {}
 pub type ClientResult<T> = Result<T, ClientError>;
 
 /// A connection to a remote or local server
-pub struct RawConnection(NonNull<bindings::MYSQL>);
+pub struct MySql(NonNull<bindings::MYSQL>);
 
 /// Options for connecting to a remote SQL server
 pub struct ConnOpts {
@@ -56,7 +60,7 @@ pub struct ConnOpts {
     flags: u32,
 }
 
-impl RawConnection {
+impl MySql {
     /// Create a new connection
     pub(super) fn new() -> Self {
         fn_thread_unsafe_lib_init();
@@ -135,24 +139,18 @@ impl RawConnection {
     pub fn query(&mut self, q: &str) -> ClientResult<()> {
         log::debug!("start query");
         unsafe {
-            let p_self: *const Self = self;
-            log::debug!("start query2");
             // mysql_real_query in mariadb_lib.c. Real just means use buffers
             // instead of c strings
             let res = global_func!(mysql_real_query_func)(
-                p_self.cast_mut().cast(),
+                self.0.as_ptr(),
                 q.as_ptr().cast(),
                 q.len().try_into().unwrap(),
             );
-            log::debug!("start query3");
             self.check_for_errors(ClientError::QueryError)?;
-            log::debug!("start query4");
 
             if res == 0 {
-                log::debug!("start query5");
                 Ok(())
             } else {
-                log::debug!("start query6");
                 let msg = "unspecified query error".into();
                 Err(ClientError::QueryError(0, msg))
             }
@@ -203,7 +201,7 @@ impl RawConnection {
     }
 }
 
-impl Drop for RawConnection {
+impl Drop for MySql {
     /// Close the connection
     fn drop(&mut self) {
         unsafe { global_func!(mysql_close_func)(self.0.as_ptr()) };
@@ -294,7 +292,7 @@ impl Field {
 }
 
 unsafe fn get_field_count(
-    conn: &mut RawConnection,
+    conn: &mut MySql,
     q_result: *const bindings::MYSQL_RES,
 ) -> ClientResult<u32> {
     let res = unsafe { global_func!(mysql_num_fields_func)(q_result.cast_mut()) };
