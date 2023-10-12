@@ -4,6 +4,8 @@ set -eaux
 
 echo "1;a7addd9adea9978fda19f21e6be987880e68ac92632ca052e5bb42b1a506939a" > /file-keys.txt
 
+mariadb-install-db
+
 cat << EOF > /usr/local/bin/start-mdb
 #!/bin/sh
 
@@ -23,9 +25,14 @@ cat << EOF > /usr/local/bin/kill-mdb
 pkill mariadbd
 EOF
 
+cat << EOF > /etc/mysql/conf.d/custom.cnf
+[mariadb]
+log-warnings=9
+EOF
+
 chmod +x /usr/local/bin/start-mdb
 chmod +x /usr/local/bin/kill-mdb
-mkdir /run/mysqld/
+mkdir -p /run/mysqld/
 
 /checkout/rust/scripts/copy_plugins.sh
 

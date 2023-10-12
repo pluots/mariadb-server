@@ -43,7 +43,8 @@ USAGE: ./run.sh [action] [flags]
 
 Actions:
     build: build from source and exit
-    rebuild: rebuild files while a server is running, to avoid startup time
+    rebuild: rebuild files while a server is running, to avoid startup time. Works
+        with the non-quick commands.
     shell: build from source then enter a shell with the built files
     test: build from source then test with MTR
     start: build from source then launch the server
@@ -132,7 +133,7 @@ elif [ "$1" = "quickstart" ]; then
         "mdb-prebuilt-img"
         "/bin/bash"
         "-c"
-        "$launcher_quick_cmd && /bin/bash"
+        "$launch_quick_cmd && /bin/bash"
     )
 
     if [ "$nobuild" = "true" ]; then

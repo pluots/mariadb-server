@@ -13,7 +13,7 @@ use mariadb::plugin::encryption::{Encryption, KeyError, KeyManager};
 use mariadb::plugin::{
     register_plugin, Init, InitError, License, Maturity, PluginType, SysVarConstString, SysVarOpt,
 };
-use mariadb::service_sql::{ClientError, Fetch, FetchedRows, MySqlConn};
+use mariadb::service_sql::{ClientError, Connection, Rows};
 
 const KEY_TABLE: &str = "mysql.clevis_keys";
 /// Max length a key can be, used for table size and buffer checking
@@ -47,20 +47,7 @@ register_plugin! {
 
 struct KeyMgtClevis;
 
-/// Get the JWS body from a server
-fn fetch_jws() -> String {
-    // FIXME: error handling
-    let url = format!("https://{}", TANG_SERVER.get());
-    let body: String = ureq::get("http://example.com")
-        .call()
-        .unwrap_or_else(|_| panic!("http request for '{url}' failed"))
-        .into_string()
-        .expect("http request larger than 10MB");
-    todo!();
-    body
-}
-
-fn make_new_key(conn: &MySqlConn) -> Result<String, ClientError> {
+fn make_new_key(conn: &Connection) -> Result<String, ClientError> {
     let server = TANG_SERVER.get();
     format!(
         "INSERT IGNORE INTO {KEY_TABLE} 
@@ -78,11 +65,12 @@ impl Init for KeyMgtClevis {
     /// Create needed tables
     fn init() -> Result<(), InitError> {
         debug!("init for KeyMgtClevis");
-        let mut conn = MySqlConn::connect_local().map_err(|e| {
-            error!("XXXXXXXXXXX error with local connection: {e}");
+        let mut conn = Connection::connect_local().map_err(|e| {
+            error!("error with local connection: {e}");
             InitError
         })?;
 
+        debug!("EX 1");
         conn.execute(&format!(
             "CREATE TABLE IF NOT EXISTS {KEY_TABLE} (
                 key_id INT UNSIGNED NOT NULL COMMENT 'MariaDB key_id',
@@ -93,70 +81,95 @@ impl Init for KeyMgtClevis {
             ) ENGINE=InnoDB"
         ))
         .map_err(|e| {
-            error!("error creating {KEY_TABLE}: {e}");
+            error!("error creating table {KEY_TABLE}: {e}");
             InitError
         })?;
+
+        debug!("EX 2");
+        conn.execute(&format!("SELECT * FROM {KEY_TABLE}"))
+            .map_err(|e| {
+                error!("error selecting {KEY_TABLE}: {e}");
+                InitError
+            })?;
+
+        debug!("EX 3");
+        conn.execute(&format!("SELECT * FROM {KEY_TABLE} WHERE key_id=1"))
+            .map_err(|e| {
+                error!("error selecting {KEY_TABLE}: {e}");
+                InitError
+            })?;
+
+        debug!("Q1");
+        let mut rows = conn
+            .query(&format!("SELECT * FROM {KEY_TABLE}"))
+            .map_err(|e| {
+                error!("error selecting 2 {KEY_TABLE}: {e}");
+                InitError
+            })?;
+
+        for row in rows {
+            dbg!(row);
+        }
+
         Ok(())
     }
 }
 
 /// Execute a query, printing an error and returning KeyError if needed. No result
-fn run_execute(conn: &mut MySqlConn, q: &str, key_id: u32) -> Result<(), KeyError> {
+fn key_execute(conn: &mut Connection, q: &str, key_id: u32) -> Result<u64, KeyError> {
     conn.execute(q).map_err(|e| {
-        error!("clevis: get_latest_key_version {key_id} - SQL error on {q} - {e}");
+        error!("execute key_id: {key_id}: SQL error: {e}. Query:\n{q}");
         KeyError::Other
     })
 }
 
 /// Execute a query, printing an error, return the result
-fn run_query<'a>(
-    conn: &'a mut MySqlConn,
-    q: &str,
-    key_id: u32,
-) -> Result<FetchedRows<'a>, KeyError> {
+fn key_query<'a>(conn: &'a mut Connection, q: &str, key_id: u32) -> Result<Rows<'a>, KeyError> {
     conn.query(q).map_err(|e| {
-        error!("clevis: get_latest_key_version {key_id} - SQL error on {q} - {e}");
+        error!("query key_id {key_id}: SQL error: {e}. Query:\n{q}");
         KeyError::Other
     })
 }
 
 impl KeyManager for KeyMgtClevis {
     fn get_latest_key_version(key_id: u32) -> Result<u32, KeyError> {
-        let mut conn = MySqlConn::connect_local().map_err(|_| KeyError::Other)?;
-        let mut q = format!("SELECT key_version FROM {KEY_TABLE} WHERE key_id = {key_id}");
-        let _ = run_query(&mut conn, &q, key_id)?;
-
-        // fuund! fetch result, parse to int
-        // if let Some(row) = todo!() {
-        if false {
-            todo!()
-            // return Ok();
+        let mut conn = Connection::connect_local().map_err(|_| KeyError::Other)?;
+        let mut q = format!(
+            "SELECT key_version FROM {KEY_TABLE}
+            WHERE key_id = {key_id}
+            ORDER BY key_version DESC
+            LIMIT 1"
+        );
+        let mut rows = key_query(&mut conn, &q, key_id)?;
+        for row in rows {
+            dbg!(row);
         }
 
-        // directly push format string
-        let key_version: u32 = 1;
-        write!(q, "AND key_version = {key_version} FOR UPDATE");
+        // // directly push format string
+        // // no key rotation yet so all key versions are 1 for now
+        // let key_version: u32 = 1;
+        // write!(q, "AND key_version = {key_version} FOR UPDATE");
 
-        run_execute(&mut conn, "START TRANSACTION", key_id)?;
-        run_query(&mut conn, &q, key_id)?;
+        // run_execute(&mut conn, "START TRANSACTION", key_id)?;
+        // run_query(&mut conn, &q, key_id)?;
 
-        let Ok(new_key) = make_new_key(&conn) else {
-            run_execute(&mut conn, "ROLLBACK", key_id)?;
-            todo!();
-        };
+        // let Ok(new_key) = make_new_key(&conn) else {
+        //     run_execute(&mut conn, "ROLLBACK", key_id)?;
+        //     todo!();
+        // };
 
-        let q = format!(
-            r#"INSERT INTO {KEY_TABLE} VALUES (
-            {key_id}, {key_version}, "{server_name}", {new_key} )"#,
-            server_name = TANG_SERVER.get()
-        );
-        run_execute(&mut conn, &q, key_id)?;
+        // let q = format!(
+        //     r#"INSERT INTO {KEY_TABLE} VALUES (
+        //     {key_id}, {key_version}, "{server_name}", {new_key} )"#,
+        //     server_name = TANG_SERVER.get()
+        // );
+        // run_execute(&mut conn, &q, key_id)?;
 
         todo!()
     }
 
     fn get_key(key_id: u32, key_version: u32, dst: &mut [u8]) -> Result<(), KeyError> {
-        let mut conn = MySqlConn::connect_local().map_err(|_| KeyError::Other)?;
+        let mut conn = Connection::connect_local().map_err(|_| KeyError::Other)?;
         let q = format!(
             "SELECT key FROM {KEY_TABLE} WHERE key_id = {key_id} AND key_version = {key_version}"
         );

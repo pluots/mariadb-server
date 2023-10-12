@@ -5,6 +5,7 @@ use crate::bindings;
 
 /// A SQL type and value
 #[non_exhaustive]
+#[derive(Clone, Copy, Debug)]
 pub enum Value<'a> {
     Decimal(&'a [u8]),
     Tiny(i8),
