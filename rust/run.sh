@@ -52,6 +52,7 @@ Actions:
     quickstart: build plugins from source, launch a prebuilt MariaDB container,
         copy the plugins
     quickshell: enter a shell on a container started with 'quickstart'
+    quickrebuild: like 'rebuild' but for 'quick' commands
 Flags:
     --nobuild: when used with 'quickstart', don't rebuild before launching
     --podman: use 'podman' instead of 'docker'
@@ -146,6 +147,14 @@ elif [ "$1" = "quickshell" ]; then
     echo "launching shell in quickstart container"
     "$launcher" exec -it mdb-plugin-prebuilt bash
     exit
+elif [ "$1" = "quickrebuild" ]; then
+    echo "build while a container is already open"
+
+    "$launcher" build -f "$dockerfile_prebuilt" --tag mdb-prebuilt-img .
+
+    command="$make_exports && $build_cmd"
+    second_cmd="$launcher"
+    second_args=("exec" "mdb-plugin-prebuilt" "/bin/bash" "-c" "$copy_plugin_cmd")
 else
     echo "invalid command $1"
     echo "$help"

@@ -27,7 +27,7 @@ EOF
 
 cat << EOF > /etc/mysql/conf.d/custom.cnf
 [mariadb]
-log-warnings=9
+log_warnings=9
 EOF
 
 chmod +x /usr/local/bin/start-mdb

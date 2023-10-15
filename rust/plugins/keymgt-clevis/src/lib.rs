@@ -85,14 +85,38 @@ impl Init for KeyMgtClevis {
             InitError
         })?;
 
+        debug!("Q0");
+        let mut rows = conn
+            .query(&format!("SELECT * FROM {KEY_TABLE}"))
+            .map_err(|e| {
+                error!("error selecting 2 {KEY_TABLE}: {e}");
+                InitError
+            })?;
+
+        for row in rows {
+            dbg!(row);
+        }
+
         debug!("EX 2");
         conn.execute(&format!("SELECT * FROM {KEY_TABLE}"))
             .map_err(|e| {
                 error!("error selecting {KEY_TABLE}: {e}");
                 InitError
             })?;
-
         debug!("EX 3");
+        conn.execute(&format!("SELECT * FROM {KEY_TABLE}"))
+            .map_err(|e| {
+                error!("error selecting {KEY_TABLE}: {e}");
+                InitError
+            })?;
+
+        debug!("EX 4");
+        conn.execute(&format!("SELECT * FROM {KEY_TABLE} WHERE key_id=1"))
+            .map_err(|e| {
+                error!("error selecting {KEY_TABLE}: {e}");
+                InitError
+            })?;
+        debug!("EX 5");
         conn.execute(&format!("SELECT * FROM {KEY_TABLE} WHERE key_id=1"))
             .map_err(|e| {
                 error!("error selecting {KEY_TABLE}: {e}");

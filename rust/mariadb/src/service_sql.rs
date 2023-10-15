@@ -4,7 +4,7 @@
 mod error;
 
 use std::cell::{OnceCell, UnsafeCell};
-use std::ffi::{CStr, CString};
+use std::ffi::{CStr, CString, c_char};
 use std::marker::PhantomData;
 use std::mem::transmute;
 use std::ptr::{self, NonNull};
@@ -125,7 +125,7 @@ impl Connection {
         debug!("START QUERY");
         self.mysql_query(q)?;
         debug!("QUERY2");
-        let res = unsafe { self.mysql_use_result()? };
+        let res = unsafe { self.mysql_store_result()? };
         Ok(res)
     }
 
@@ -176,46 +176,66 @@ impl Connection {
         unsafe { global_func!(mysql_affected_rows_func)(self.inner.as_ptr()) }
     }
 
-    /// Prepare the result for iteration, but do not store
+    /// Prepare the result for iteration by storing them
+    ///
+    /// FIXME: we would rather use `mysql_use_result` so we don't need to store the whole set,
+    /// but seems like it isn't available via service_sql?
     ///
     /// # Safety
     ///
     /// This may only be called after `mysql_query`
-    unsafe fn mysql_use_result(&mut self) -> ClientResult<Rows<'_>> {
+    unsafe fn mysql_store_result(&mut self) -> ClientResult<Rows<'_>> {
         debug!("use result");
         // SAFETY: we call use_result with a valid connection pointer
-        let res = unsafe { bindings::mysql_use_result(self.inner.as_ptr()) };
+        debug!("mysql_use_result call");
+        // debug!("MYSQL: {:#?}", unsafe { &*self.inner.as_ptr() });
+
+        let res = unsafe { global_func!(mysql_store_result_func)(self.inner.as_ptr()) };
+        // WHY DOESN'T THIS WORK
+        // let res = unsafe { bindings::mysql_use_result(self.inner.as_ptr()) };
+        debug!("res: {res:p}");
 
         match NonNull::new(res) {
             Some(res_ptr) => {
                 // SAFETY: nonnull pointer from use_result is valid
                 let mysql_res = unsafe { &mut *res_ptr.as_ptr() };
                 let field_count = mysql_res.field_count;
-                // SAFETY: FFI call with a valid pointer
-                let field_ptr = unsafe { bindings::mysql_fetch_fields(mysql_res) };
 
-                if field_ptr.is_null() {
-                    // This function should never fail to my knowledge
-                    if let Err(e) = self.check_for_errors(ClientError::QueryError) {
-                        error!("fatal error: {e}");
-                    };
-                    // SAFETY: FFI call with valid pointer
-                    unsafe { global_func!(mysql_free_result_func)(mysql_res) };
-                    panic!("mysql_fetch_fields returned null! exiting");
-                }
+                // FIXME: we don't seem to have mysql_fetch_fields. It's just an accessor though.
+                // SAFETY: FFI call with a valid pointer
+                // let field_ptr = unsafe { bindings::mysql_fetch_fields(mysql_res) };
+
+                // if field_ptr.is_null() {
+                //     // This function should never fail to my knowledge
+                //     if let Err(e) = self.check_for_errors(ClientError::QueryError) {
+                //         error!("fatal error: {e}");
+                //     };
+                //     // SAFETY: FFI call with valid pointer
+                //     unsafe { global_func!(mysql_free_result_func)(mysql_res) };
+                //     panic!("mysql_fetch_fields returned null! exiting");
+                // }
 
                 // SAFETY: FFI provided us a valid pointer and length
-                let fields =
-                    unsafe { slice::from_raw_parts(field_ptr, field_count.try_into().unwrap()) };
+                let fields = unsafe {
+                    slice::from_raw_parts(
+                        mysql_res.fields,
+                        mysql_res.field_count.try_into().unwrap(),
+                    )
+                };
+                // let fields =
+                //     unsafe { slice::from_raw_parts(field_ptr, field_count.try_into().unwrap()) };
+
+                debug!("FIELDS: {fields:#?}");
 
                 let rows = Rows {
                     conn: self,
-                    inner: todo!(),
+                    inner: res_ptr,
                     field_meta: transmute(fields),
                 };
                 Ok(rows)
             }
             None => {
+                debug!("ERROR PATH");
                 self.check_for_errors(ClientError::QueryError)?;
                 let msg = "unspecified fetch error, maybe this shouldn't return any rows?".into();
                 Err(ClientError::FetchError(0, msg))
@@ -275,13 +295,16 @@ impl<'res> Iterator for Rows<'res> {
     type Item = Row<'res>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        // type `bindings::MYSQL_ROW`, `*mut *mut c_char`
         let rptr = unsafe { global_func!(mysql_fetch_row_func)(self.inner.as_ptr()) };
+        let field_ptrs = unsafe { slice::from_raw_parts(rptr, self.field_meta.len()) };
 
         if rptr.is_null() {
             None
         } else {
+            dbg!(unsafe { *rptr }, self.field_meta);
             Some(Row {
-                inner: rptr,
+                field_ptrs,
                 field_meta: self.field_meta,
             })
         }
@@ -292,20 +315,18 @@ impl<'res> Iterator for Rows<'res> {
 pub struct Row<'row> {
     /// This stores the actual data
     /// `*mut *mut c_char`
-    inner: bindings::MYSQL_ROW,
+    field_ptrs: &'row [*mut c_char],
     /// Information about the fields in the result
     field_meta: &'row [FieldMeta<'row>],
 }
 
 impl Row<'_> {
-    /// Get the field of a given index
+    /// Get the field of a given index. Panics if out of range
     pub fn field_value(&self, index: usize) -> Value {
-        let field = &self.field_meta[index];
-        assert!(index < self.field_meta.len()); // extra sanity check
-        unsafe {
-            let ptr = *self.inner.add(index);
-            Value::from_ptr(field.ftype(), ptr.cast(), field.length())
-        }
+        let meta = &self.field_meta[index];
+        let field_ptr = self.field_ptrs[index];
+        dbg!(field_ptr);
+        unsafe { Value::from_ptr(meta.ftype(), field_ptr.cast(), meta.length()) }
     }
 
     pub const fn field_info(&self, index: usize) -> &FieldMeta {
@@ -354,6 +375,7 @@ impl Field<'_> {
 
 /// Transparant wrapper around a `MYSQL_FIELD`. This does not contain data, only field meta
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct FieldMeta<'row> {
     inner: bindings::MYSQL_FIELD,
     phantom: PhantomData<&'row ()>,

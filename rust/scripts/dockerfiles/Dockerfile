@@ -10,12 +10,14 @@ RUN apt-get update \
         build-essential \
         cmake \
         cmake-curses-gui \
+        gdb \
         libboost-all-dev \
         less \
         liblz4-dev \
         liblzo2-dev \
         libsnappy-dev \
         libzstd-dev \
+        lldb \
         mariadb-client \
         ninja-build \
         sccache \
