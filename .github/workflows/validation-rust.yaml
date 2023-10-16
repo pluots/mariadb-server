@@ -90,7 +90,7 @@ jobs:
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
       - name: Run docker tests
         run: >
-          mkdir docker_obj &&
+          mkdir -p docker_obj &&
           docker run --rm
           --volume $(pwd):/checkout:ro
           --volume $(pwd)/docker_obj:/obj
