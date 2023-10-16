@@ -66,7 +66,7 @@ macro(CONFIGURE_RUST_PLUGINS)
       "How to build plugin ${cargo_name}. Options are: NO STATIC DYNAMIC YES AUTO.")
 
     if(NOT ${${cache_name}} MATCHES "^(NO|YES|AUTO|STATIC|DYNAMIC)$")
-      message(FATAL_ERROR "Invalid value ${cache_name} for ${cache_name}")
+      message(FATAL_ERROR "Invalid value t${cache_name} for ${cache_name}")
     endif()
 
     set(cargo_cmd 
