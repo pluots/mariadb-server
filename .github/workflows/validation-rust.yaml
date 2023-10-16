@@ -114,7 +114,7 @@ jobs:
         if: always()
         with:
           path: docker_obj
-          key: ${{ runner.os }}-primes
+          key: ${{ steps.cache-build-restore.outputs.cache-primary-key }}
 
   fmt:
     name: "Format (cargo fmt)"
