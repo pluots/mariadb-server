@@ -44,7 +44,7 @@ impl KeyManager for BasicKeyMgt {
         }
 
         // Copy our slice to the buffer, return the copied length
-        dst[..s.len()].copy_from_slice(s.as_str().as_bytes());
+        dst[..s.len()].copy_from_slice(s.as_bytes());
         Ok(())
     }
 

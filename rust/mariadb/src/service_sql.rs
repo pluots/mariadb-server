@@ -4,7 +4,7 @@
 mod error;
 
 use std::cell::{OnceCell, UnsafeCell};
-use std::ffi::{CStr, CString, c_char};
+use std::ffi::{c_char, CStr, CString};
 use std::marker::PhantomData;
 use std::mem::transmute;
 use std::ptr::{self, NonNull};
@@ -130,6 +130,7 @@ impl Connection {
     }
 
     /// Initialize the connection
+    #[allow(clippy::unnecessary_wraps)]
     fn mysql_init() -> ClientResult<Self> {
         fn_thread_unsafe_lib_init();
 
@@ -179,7 +180,7 @@ impl Connection {
     /// Prepare the result for iteration by storing them
     ///
     /// FIXME: we would rather use `mysql_use_result` so we don't need to store the whole set,
-    /// but seems like it isn't available via service_sql?
+    /// but seems like it isn't available via `service_sql`?
     ///
     /// # Safety
     ///
@@ -195,51 +196,52 @@ impl Connection {
         // let res = unsafe { bindings::mysql_use_result(self.inner.as_ptr()) };
         debug!("res: {res:p}");
 
-        match NonNull::new(res) {
-            Some(res_ptr) => {
-                // SAFETY: nonnull pointer from use_result is valid
-                let mysql_res = unsafe { &mut *res_ptr.as_ptr() };
-                let field_count = mysql_res.field_count;
+        if let Some(res_ptr) = NonNull::new(res) {
+            // SAFETY: nonnull pointer from use_result is valid
+            let mysql_res = unsafe { &mut *res_ptr.as_ptr() };
+            let field_count = mysql_res.field_count;
 
-                // FIXME: we don't seem to have mysql_fetch_fields. It's just an accessor though.
-                // SAFETY: FFI call with a valid pointer
-                // let field_ptr = unsafe { bindings::mysql_fetch_fields(mysql_res) };
+            // FIXME: we don't seem to have mysql_fetch_fields. It's just an accessor though.
+            // SAFETY: FFI call with a valid pointer
+            // let field_ptr = unsafe { bindings::mysql_fetch_fields(mysql_res) };
 
-                // if field_ptr.is_null() {
-                //     // This function should never fail to my knowledge
-                //     if let Err(e) = self.check_for_errors(ClientError::QueryError) {
-                //         error!("fatal error: {e}");
-                //     };
-                //     // SAFETY: FFI call with valid pointer
-                //     unsafe { global_func!(mysql_free_result_func)(mysql_res) };
-                //     panic!("mysql_fetch_fields returned null! exiting");
-                // }
+            // if field_ptr.is_null() {
+            //     // This function should never fail to my knowledge
+            //     if let Err(e) = self.check_for_errors(ClientError::QueryError) {
+            //         error!("fatal error: {e}");
+            //     };
+            //     // SAFETY: FFI call with valid pointer
+            //     unsafe { global_func!(mysql_free_result_func)(mysql_res) };
+            //     panic!("mysql_fetch_fields returned null! exiting");
+            // }
 
-                // SAFETY: FFI provided us a valid pointer and length
-                let fields = unsafe {
-                    slice::from_raw_parts(
-                        mysql_res.fields,
-                        mysql_res.field_count.try_into().unwrap(),
-                    )
-                };
-                // let fields =
-                //     unsafe { slice::from_raw_parts(field_ptr, field_count.try_into().unwrap()) };
+            // SAFETY: FFI provided us a valid pointer and length
+            let fields = unsafe {
+                slice::from_raw_parts(mysql_res.fields, mysql_res.field_count.try_into().unwrap())
+            };
+            // let fields =
+            //     unsafe { slice::from_raw_parts(field_ptr, field_count.try_into().unwrap()) };
 
-                debug!("FIELDS: {fields:#?}");
+            debug!("FIELDS: {fields:#?}");
 
-                let rows = Rows {
-                    conn: self,
-                    inner: res_ptr,
-                    field_meta: transmute(fields),
-                };
-                Ok(rows)
-            }
-            None => {
-                debug!("ERROR PATH");
-                self.check_for_errors(ClientError::QueryError)?;
-                let msg = "unspecified fetch error, maybe this shouldn't return any rows?".into();
-                Err(ClientError::FetchError(0, msg))
-            }
+            let field_meta = unsafe {
+                slice::from_raw_parts(
+                    mysql_res.fields.cast(),
+                    mysql_res.field_count.try_into().unwrap(),
+                )
+            };
+
+            let rows = Rows {
+                conn: self,
+                inner: res_ptr,
+                field_meta,
+            };
+            Ok(rows)
+        } else {
+            debug!("ERROR PATH");
+            self.check_for_errors(ClientError::QueryError)?;
+            let msg = "unspecified fetch error, maybe this shouldn't return any rows?".into();
+            Err(ClientError::FetchError(0, msg))
         }
     }
 

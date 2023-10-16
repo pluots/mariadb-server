@@ -1,5 +1,5 @@
 use std::ffi::{c_char, c_long};
-use std::{slice, ptr};
+use std::slice;
 
 use crate::bindings;
 
@@ -48,7 +48,9 @@ impl<'a> Value<'a> {
             bindings::enum_field_types::MYSQL_TYPE_SHORT => Self::I16(*ptr.cast()),
             // This is yucky, `long` is `i32` on Windows but `i64` on nix. So, we load it as a `long` but
             // always store it as `i64`.
-            bindings::enum_field_types::MYSQL_TYPE_LONG => Self::Long((*ptr.cast::<c_long>()).into()),
+            bindings::enum_field_types::MYSQL_TYPE_LONG => {
+                Self::Long((*ptr.cast::<c_long>()).into())
+            }
             bindings::enum_field_types::MYSQL_TYPE_LONGLONG => Self::LongLong(*ptr.cast()),
             bindings::enum_field_types::MYSQL_TYPE_FLOAT => Self::F32(*ptr.cast()),
             bindings::enum_field_types::MYSQL_TYPE_DOUBLE => Self::F64(*ptr.cast()),
@@ -70,12 +72,12 @@ impl<'a> Value<'a> {
             bindings::enum_field_types::MYSQL_TYPE_NEWDECIMAL => todo!(),
             bindings::enum_field_types::MYSQL_TYPE_ENUM => todo!(),
             bindings::enum_field_types::MYSQL_TYPE_SET => todo!(),
-            bindings::enum_field_types::MYSQL_TYPE_TINY_BLOB => Self::Blob(buf_callback()),
-            bindings::enum_field_types::MYSQL_TYPE_MEDIUM_BLOB => Self::Blob(buf_callback()),
-            bindings::enum_field_types::MYSQL_TYPE_LONG_BLOB => Self::Blob(buf_callback()),
-            bindings::enum_field_types::MYSQL_TYPE_BLOB => Self::Blob(buf_callback()),
-            bindings::enum_field_types::MYSQL_TYPE_VAR_STRING => Self::String(buf_callback()),
-            bindings::enum_field_types::MYSQL_TYPE_STRING => Self::String(buf_callback()),
+            bindings::enum_field_types::MYSQL_TYPE_TINY_BLOB
+            | bindings::enum_field_types::MYSQL_TYPE_MEDIUM_BLOB
+            | bindings::enum_field_types::MYSQL_TYPE_LONG_BLOB
+            | bindings::enum_field_types::MYSQL_TYPE_BLOB => Self::Blob(buf_callback()),
+            bindings::enum_field_types::MYSQL_TYPE_VAR_STRING
+            | bindings::enum_field_types::MYSQL_TYPE_STRING => Self::String(buf_callback()),
             bindings::enum_field_types::MYSQL_TYPE_GEOMETRY => todo!(),
             _ => todo!(),
         }
