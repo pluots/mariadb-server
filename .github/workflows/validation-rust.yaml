@@ -64,13 +64,13 @@ jobs:
         id: cache-docker-restore
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ hashFiles('**/Dockerfile') }}
+          key: ${{ runner.os }}-docker-buildx-${{ hashFiles('**/Dockerfile') }}
       - name: Restore build cache
         id: cache-build-restore
         uses: actions/cache/restore@v3
         with:
           path: docker_obj
-          key: ${{ runner.os }}-build-cache
+          key: ${{ runner.os }}-build
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Build Image
