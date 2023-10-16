@@ -73,6 +73,7 @@ macro(CONFIGURE_RUST_PLUGINS)
       cargo rustc
       --target-dir=${cargo_target_dir}
       --package=${cargo_name}
+      --locked
       --quiet
     )
 
