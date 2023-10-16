@@ -4,40 +4,6 @@
 
 set -eaux
 
-this_path=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
-maria_root="$(dirname "$(dirname "$this_path")")"
-rust_dir=${maria_root}/rust
-script_dir=${rust_dir}/scripts
-dockerfile=${rust_dir}/scripts/dockerfiles/Dockerfile
-dockerfile_prebuilt=${rust_dir}/scripts/dockerfiles/Dockerfile.prebuilt
-obj_dir=${maria_root}/docker_obj
-
-echo "using root $maria_root"
-echo "using script_dir $script_dir"
-echo "using dockerfile $dockerfile"
-echo "using dockerfile_prebuilt $dockerfile_prebuilt"
-echo "using obj_dir $obj_dir"
-
-mkdir -p "$obj_dir"
-
-docker_args=()
-# docker_args="$docker_args --volume $maria_root:/checkout"
-docker_args=("${docker_args[@]}" "--volume" "$maria_root:/checkout:ro")
-docker_args=("${docker_args[@]}" "--volume" "$obj_dir:/obj")
-docker_args=("${docker_args[@]}" "--rm")
-docker_name="mdb-plugin-test"
-
-second_cmd=""
-second_args=()
-
-build_cmd="/checkout/rust/scripts/build_maria.sh"
-copy_plugin_cmd="/checkout/rust/scripts/copy_plugins.sh"
-test_cmd="/checkout/rust/scripts/run_mtr.sh"
-start_cmd="/checkout/rust/scripts/install_run_maria.sh"
-launch_quick_cmd="/checkout/rust/scripts/launch_quick.sh"
-
-make_exports="export BUILD_CMD=$build_cmd && export TEST_CMD=test_cmd && export START_CMD=start_cmd"
-
 help=$(cat <<-END
 USAGE: ./run.sh [action] [flags]
 
@@ -88,6 +54,50 @@ do
     fi
 done
 
+this_path=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
+maria_root="$(dirname "$(dirname "$this_path")")"
+rust_dir=${maria_root}/rust
+script_dir=${rust_dir}/scripts
+dockerfile=${rust_dir}/scripts/dockerfiles/Dockerfile
+dockerfile_prebuilt=${rust_dir}/scripts/dockerfiles/Dockerfile.prebuilt
+obj_dir=${maria_root}/docker_obj
+
+echo "using root $maria_root"
+echo "using script_dir $script_dir"
+echo "using dockerfile $dockerfile"
+echo "using dockerfile_prebuilt $dockerfile_prebuilt"
+echo "using obj_dir $obj_dir"
+
+mkdir -p "$obj_dir"
+
+docker_args=()
+# docker_args="$docker_args --volume $maria_root:/checkout"
+docker_args=("${docker_args[@]}" "--volume" "$maria_root:/checkout:ro")
+docker_args=("${docker_args[@]}" "--volume" "$obj_dir:/obj")
+docker_args=("${docker_args[@]}" "--rm")
+docker_name="mdb-plugin-test"
+
+second_cmd=""
+second_args=()
+
+build_cmd="/checkout/rust/scripts/build.sh"
+copy_plugin_cmd="/checkout/rust/scripts/copy_plugins.sh"
+install_cmd="/checkout/rust/scripts/install.sh"
+launch_quick_cmd="/checkout/rust/scripts/launch_quick.sh"
+test_cmd="/checkout/rust/scripts/run_mtr.sh"
+start_safe_cmd="/checkout/rust/scripts/start_safe.sh"
+start_cmd="/checkout/rust/scripts/start.sh"
+
+make_exports="export BUILD_CMD=$build_cmd &&
+    export INSTALL_CMD=install_cmd &&
+    export TEST_CMD=test_cmd &&
+    export START_CMD=start_cmd &&
+    export START_SAFE_CMD=start_safe_cmd"
+
+if [ "$nobuild" = "true" ]; then
+    build_cmd="echo skipping build"
+fi
+
 if [ -z "${1:-""}" ]; then
     echo "$help"
     exit 1
@@ -109,11 +119,11 @@ elif [ "$1" = "rebuild" ]; then
     second_args=("exec" "$orig_docker_name" "/bin/bash" "-c" "$copy_plugin_cmd")
 elif [ "$1" = "test" ]; then
     echo "building then testing mariadb"
-    command="$make_exports && $build_cmd && $test_cmd"
+    command="$make_exports && $build_cmd && $install_cmd && $test_cmd"
 elif [ "$1" = "start" ]; then
     echo "building then starting mariadb"
     docker_args=("${docker_args[@]}" "-it")
-    command="$make_exports && $build_cmd && $start_cmd"
+    command="$make_exports && $build_cmd && $install_cmd && $start_safe_cmd"
 elif [ "$1" = "startshell" ]; then
     echo "launching a shell in a started container"
     "$launcher" exec -it "$docker_name" bash

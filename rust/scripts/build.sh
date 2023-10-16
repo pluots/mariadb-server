@@ -1,4 +1,5 @@
 #!/bin/sh
+# Build MariaDB with good configuration options
 
 set -eaux
 

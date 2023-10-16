@@ -27,6 +27,7 @@ pub enum Value<'a> {
 
 impl<'a> Value<'a> {
     /// Supply a
+    #[allow(clippy::cast_ptr_alignment)] // FIXME c_long
     pub(crate) unsafe fn from_ptr(
         ty: bindings::enum_field_types,
         ptr: *const c_char,
