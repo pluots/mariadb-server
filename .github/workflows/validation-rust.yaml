@@ -96,7 +96,7 @@ jobs:
           --volume $(pwd)/docker_obj:/obj
           mdb-test-build
           /bin/bash -c
-          'rust/scripts/build_maria.sh && rust/scripts/run_mtr.sh'
+          'rust/scripts/build.sh && rust/scripts/run_mtr.sh'
       - name: Save docker layer cache
         uses: actions/cache/save@v3
         id: cache-docker-save
