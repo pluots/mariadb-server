@@ -9,7 +9,7 @@ on:
   push:
     branches:
     - rust
-  # pull_request:
+  pull_request:
 
 name: Rust Validation
 
