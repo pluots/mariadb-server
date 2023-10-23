@@ -17,6 +17,7 @@ RUN apt-get update \
         liblzo2-dev \
         libsnappy-dev \
         libzstd-dev \
+        lld \
         lldb \
         mariadb-client \
         ninja-build \
@@ -33,3 +34,4 @@ ENV CARGO_TARGET_DIR=/obj/build-cargo
 ENV BUILD_DIR=/obj/build-mariadb
 ENV SCCACHE_DIR=/obj/sccache
 ENV SCCACHE_CACHE_SIZE="1G"
+ENV LD=/usr/bin/lld

@@ -15,11 +15,16 @@ git config --global --add safe.directory '*'
 rm -f "${BUILD_DIR}/rust_target/debug/"*.so
 rm -f "${BUILD_DIR}/rust_target/release/"*.so
 
+# allow overriding with lld or mold
+c_flags="-fuse-ld=${LD:-ld}"
+
 # We disable submodule updates and mroonga because they are two targets that
 # touch the source directory.
 cmake \
     -S/checkout\
-    -B${BUILD_DIR} \
+    "-B${BUILD_DIR}" \
+    "-DCMAKE_C_FLAGS=${c_flags}" \
+    "-DCMAKE_CXX_FLAGS=${c_flags}" \
     -DCMAKE_C_COMPILER_LAUNCHER=sccache \
     -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
     -DCMAKE_BUILD_TYPE=Debug \
