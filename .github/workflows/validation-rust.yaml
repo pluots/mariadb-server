@@ -9,7 +9,7 @@ on:
   push:
     branches:
     - rust
-  # pull_request:
+  pull_request:
 
 name: Rust Validation
 
@@ -100,14 +100,14 @@ jobs:
       - name: Save docker layer cache
         uses: actions/cache/save@v3
         id: cache-docker-save
-        if: always()
+        if: always() # always save cache even if tests fail
         with:
           path: /tmp/.buildx-cache
           key: ${{ steps.cache-docker-restore.outputs.cache-primary-key }}
       - name: Save build cache
         id: cache-build-save
         uses: actions/cache/save@v3
-        if: always()
+        if: always() # always save cache even if tests fail
         with:
           path: docker_obj
           key: ${{ steps.cache-build-restore.outputs.cache-primary-key }}
