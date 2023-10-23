@@ -7,6 +7,7 @@ set -eaux
 mariadb-install-db
 
 cp /checkout/rust/scripts/start_maria.sh /usr/local/bin/start-mdb
+cp /checkout/rust/scripts/my.cnf ~/my.cnf
 
 cat << EOF > /usr/local/bin/kill-mdb
 #!/bin/sh

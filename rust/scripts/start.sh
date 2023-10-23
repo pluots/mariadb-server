@@ -5,6 +5,7 @@ set -eaux
 echo "1;a7addd9adea9978fda19f21e6be987880e68ac92632ca052e5bb42b1a506939a" > /file-keys.txt
 
 mariadbd --user=root \
+    --datadir=/usr/local/mysql/data \
     --plugin-maturity=experimental \
     --log-bin=on \
     --loose-file-key-management-filename=/file-keys.txt \

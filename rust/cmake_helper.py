@@ -12,18 +12,15 @@ PLUGIN_CACHE_NAME|target_name|cargo-name|staticlib_name.a|libdylib_name.so|dylib
 import re
 import os
 
+
 def main():
     this_path = os.path.dirname(__file__)
 
     with open(f"{this_path}/Cargo.toml") as f:
         cargo = f.read()
-    
+
     members = re.search(r"members\s+=\s+\[(.*)\]", cargo, re.DOTALL).group(1)
-    paths = [
-        m.strip().split("\"")[1]
-        for m in members.strip().split(",")
-        if len(m) > 0
-    ]
+    paths = [m.strip().split('"')[1] for m in members.strip().split(",") if len(m) > 0]
 
     ret = []
 
@@ -33,9 +30,9 @@ def main():
 
         with open(f"{this_path}/{path}/Cargo.toml") as f:
             data = f.read()
-        
+
         cargo_name = re.search(r"name\s+=\s+\"(\S+)\"", data, re.MULTILINE).group(1)
-        name_var = cargo_name.upper().replace("-","_")
+        name_var = cargo_name.upper().replace("-", "_")
         is_example = path.startswith("example")
         ex_pfx_upper = "EXAMPLE_" if is_example else ""
         ex_pfx_lower = ex_pfx_upper.lower()
@@ -51,9 +48,12 @@ def main():
         # Name that is output by rust
         dyn_name_out = f"lib{name_var.lower()}.so"
 
-        ret.append(f"{cache_name}|{target_name}|{cargo_name}|{static_name}|{dyn_name_out}|{dyn_name_final}")
+        ret.append(
+            f"{cache_name}|{target_name}|{cargo_name}|{static_name}|{dyn_name_out}|{dyn_name_final}"
+        )
 
     print(";".join(ret), end="")
+
 
 if __name__ == "__main__":
     main()
