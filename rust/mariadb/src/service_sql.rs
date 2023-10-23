@@ -4,7 +4,7 @@
 mod error;
 
 use std::cell::{OnceCell, UnsafeCell};
-use std::ffi::{c_char, CStr, CString};
+use std::ffi::{c_char, c_longlong, c_ulonglong, CStr, CString};
 use std::marker::PhantomData;
 use std::mem::transmute;
 use std::ptr::{self, NonNull};
@@ -112,7 +112,19 @@ impl Connection {
     #[inline]
     pub fn execute(&mut self, q: &str) -> ClientResult<u64> {
         self.mysql_query(q)?;
-        Ok(self.mysql_affected_rows())
+        let count = self.mysql_affected_rows().unwrap_or(0);
+
+        // FIXME: this seems hacky. If we have a field count, we need to store then drop the result,
+        // otherwise it seems like we never get set back to `MYSQL_STATUS_READY`. If there is no
+        // field count, we can't store the rows because that returns an error. But
+        // `mysql_field_count_func` isn't even available...?
+        let fields_count = self.mysql_field_count();
+        if fields_count != 0 {
+            // Can we just discard somehow since `execute` expectes no result?
+            let _rows = unsafe { self.mysql_store_result()? };
+        }
+
+        Ok(count)
     }
 
     /// Run a query for lazily loaded results
@@ -122,11 +134,16 @@ impl Connection {
     /// Error if the row could not be fetched
     #[inline]
     pub fn query<'conn>(&'conn mut self, q: &str) -> ClientResult<Rows<'conn>> {
-        debug!("START QUERY");
         self.mysql_query(q)?;
-        debug!("QUERY2");
-        let res = unsafe { self.mysql_store_result()? };
-        Ok(res)
+        let fields_count = self.mysql_field_count();
+        let rows = if fields_count == 0 {
+            // See FIXMEs from execute
+            Rows::empty(self)
+        } else {
+            unsafe { self.mysql_store_result()? }
+        };
+
+        Ok(rows)
     }
 
     /// Initialize the connection
@@ -153,28 +170,43 @@ impl Connection {
     /// Execute a query
     fn mysql_query(&mut self, q: &str) -> ClientResult<()> {
         log::debug!("start query");
-        unsafe {
-            // mysql_real_query in mariadb_lib.c. Real just means use buffers
-            // instead of c strings
-            let res = global_func!(mysql_real_query_func)(
+        // mysql_real_query in mariadb_lib.c. Real just means use buffers
+        // instead of c strings
+        let res = unsafe {
+            global_func!(mysql_real_query_func)(
                 self.inner.as_ptr(),
                 q.as_ptr().cast(),
                 q.len().try_into().unwrap(),
-            );
-            self.check_for_errors(ClientError::QueryError)?;
+            )
+        };
 
-            // Zero for success, nonzero for errors
-            if res == 0 {
-                Ok(())
-            } else {
-                let msg = "unspecified query error";
-                Err(ClientError::QueryError(0, msg.into()))
-            }
+        self.check_for_errors(ClientError::QueryError)?;
+
+        // Zero for success, nonzero for errors
+        if res == 0 {
+            Ok(())
+        } else {
+            let msg = "unspecified query error";
+            Err(ClientError::QueryError(0, msg.into()))
         }
     }
 
-    fn mysql_affected_rows(&mut self) -> u64 {
-        unsafe { global_func!(mysql_affected_rows_func)(self.inner.as_ptr()) }
+    /// This is weird. It seems like if there are no rows, it returns -1? This gets set in
+    /// `loc_advanced_command` and never set to something more useful. Weird.
+    ///
+    /// FIXME: get some clarification here
+    fn mysql_affected_rows(&mut self) -> Option<u64> {
+        let res = unsafe { global_func!(mysql_affected_rows_func)(self.inner.as_ptr()) };
+        if res == c_ulonglong::MAX {
+            None
+        } else {
+            Some(res)
+        }
+    }
+
+    /// Doesn't seem like `mysql_field_count_func` is available
+    fn mysql_field_count(&mut self) -> u32 {
+        unsafe { (*self.inner.as_ptr()).field_count }
     }
 
     /// Prepare the result for iteration by storing them
@@ -233,8 +265,8 @@ impl Connection {
 
             let rows = Rows {
                 conn: self,
-                inner: res_ptr,
-                field_meta,
+                inner: Some(res_ptr),
+                field_meta: Some(field_meta),
             };
             Ok(rows)
         } else {
@@ -278,18 +310,29 @@ impl Drop for Connection {
 pub struct Rows<'res> {
     /// The parent connection
     conn: &'res Connection,
-    /// Pointer to the result
-    inner: NonNull<bindings::MYSQL_RES>,
+    /// Pointer to the result. If `None`, we have no rows
+    inner: Option<NonNull<bindings::MYSQL_RES>>,
     /// The fields that were part of this row. Lazily initialized
-    field_meta: &'res [FieldMeta<'res>],
+    field_meta: Option<&'res [FieldMeta<'res>]>,
 }
 
-impl Rows<'_> {}
+impl<'res> Rows<'res> {
+    /// Create an empty rows iterator
+    fn empty(conn: &'res Connection) -> Self {
+        Self {
+            conn,
+            inner: None,
+            field_meta: None,
+        }
+    }
+}
 
 impl Drop for Rows<'_> {
     fn drop(&mut self) {
         // SAFETY: we hold a valid pointer
-        unsafe { global_func!(mysql_free_result_func)(self.inner.as_ptr()) };
+        if let Some(ptr) = self.inner {
+            unsafe { global_func!(mysql_free_result_func)(ptr.as_ptr()) };
+        }
     }
 }
 
@@ -298,16 +341,15 @@ impl<'res> Iterator for Rows<'res> {
 
     fn next(&mut self) -> Option<Self::Item> {
         // type `bindings::MYSQL_ROW`, `*mut *mut c_char`
-        let rptr = unsafe { global_func!(mysql_fetch_row_func)(self.inner.as_ptr()) };
-        let field_ptrs = unsafe { slice::from_raw_parts(rptr, self.field_meta.len()) };
+        let rptr = unsafe { global_func!(mysql_fetch_row_func)(self.inner?.as_ptr()) };
+        let field_ptrs = unsafe { slice::from_raw_parts(rptr, self.field_meta.unwrap().len()) };
 
         if rptr.is_null() {
             None
         } else {
-            dbg!(unsafe { *rptr }, self.field_meta);
             Some(Row {
                 field_ptrs,
-                field_meta: self.field_meta,
+                field_meta: self.field_meta.unwrap(),
             })
         }
     }
@@ -328,7 +370,7 @@ impl Row<'_> {
         let meta = &self.field_meta[index];
         let field_ptr = self.field_ptrs[index];
         dbg!(field_ptr);
-        unsafe { Value::from_ptr(meta.ftype(), field_ptr.cast(), meta.length()) }
+        unsafe { Value::from_str_ptr(meta.ftype(), field_ptr, meta.max_length()) }
     }
 
     pub const fn field_info(&self, index: usize) -> &FieldMeta {

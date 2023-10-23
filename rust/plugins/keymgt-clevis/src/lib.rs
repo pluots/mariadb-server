@@ -64,13 +64,11 @@ fn make_new_key(conn: &Connection) -> Result<String, ClientError> {
 impl Init for KeyMgtClevis {
     /// Create needed tables
     fn init() -> Result<(), InitError> {
-        debug!("init for KeyMgtClevis");
         let mut conn = Connection::connect_local().map_err(|e| {
             error!("error with local connection: {e}");
             InitError
         })?;
 
-        debug!("EX 1");
         conn.execute(&format!(
             "CREATE TABLE IF NOT EXISTS {KEY_TABLE} (
                 key_id INT UNSIGNED NOT NULL COMMENT 'MariaDB key_id',
@@ -85,49 +83,10 @@ impl Init for KeyMgtClevis {
             InitError
         })?;
 
-        debug!("Q0");
         let mut rows = conn
             .query(&format!("SELECT * FROM {KEY_TABLE}"))
             .map_err(|e| {
-                error!("error selecting 2 {KEY_TABLE}: {e}");
-                InitError
-            })?;
-
-        for row in rows {
-            dbg!(row);
-        }
-
-        debug!("EX 2");
-        conn.execute(&format!("SELECT * FROM {KEY_TABLE}"))
-            .map_err(|e| {
                 error!("error selecting {KEY_TABLE}: {e}");
-                InitError
-            })?;
-        debug!("EX 3");
-        conn.execute(&format!("SELECT * FROM {KEY_TABLE}"))
-            .map_err(|e| {
-                error!("error selecting {KEY_TABLE}: {e}");
-                InitError
-            })?;
-
-        debug!("EX 4");
-        conn.execute(&format!("SELECT * FROM {KEY_TABLE} WHERE key_id=1"))
-            .map_err(|e| {
-                error!("error selecting {KEY_TABLE}: {e}");
-                InitError
-            })?;
-        debug!("EX 5");
-        conn.execute(&format!("SELECT * FROM {KEY_TABLE} WHERE key_id=1"))
-            .map_err(|e| {
-                error!("error selecting {KEY_TABLE}: {e}");
-                InitError
-            })?;
-
-        debug!("Q1");
-        let mut rows = conn
-            .query(&format!("SELECT * FROM {KEY_TABLE}"))
-            .map_err(|e| {
-                error!("error selecting 2 {KEY_TABLE}: {e}");
                 InitError
             })?;
 

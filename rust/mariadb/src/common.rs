@@ -1,4 +1,4 @@
-use std::ffi::{c_char, c_long};
+use std::ffi::c_char;
 use std::slice;
 
 use crate::bindings;
@@ -26,35 +26,43 @@ pub enum Value<'a> {
 }
 
 impl<'a> Value<'a> {
-    /// Supply a
-    #[allow(clippy::cast_ptr_alignment)] // FIXME c_long
-    pub(crate) unsafe fn from_ptr(
+    /// Don't ask me why but our responses from the server API seem to all be strings
+    /// So: take a pointer to the string then parse it as whatever value we expect
+    pub(crate) unsafe fn from_str_ptr(
         ty: bindings::enum_field_types,
         ptr: *const c_char,
         len: usize,
     ) -> Self {
-        // helper function to make a slice
-        let buf_callback = || slice::from_raw_parts(ptr.cast(), len);
-        dbg!(ty, ptr, len);
+        // SAFETY: caller guarantees validity
+        let bytes: &[u8] = unsafe { slice::from_raw_parts(ptr.cast(), len) };
+        let tostr = |bytes| std::str::from_utf8(bytes).unwrap();
 
         match ty {
-            bindings::enum_field_types::MYSQL_TYPE_DECIMAL => Self::Decimal(buf_callback()),
+            bindings::enum_field_types::MYSQL_TYPE_DECIMAL => Self::Decimal(bytes),
             // TODO: seems like we get unaligned pointers?
             // bindings::enum_field_types::MYSQL_TYPE_TINY => Self::Tiny(ptr::read_unaligned(ptr.cast())),
             // bindings::enum_field_types::MYSQL_TYPE_SHORT => Self::Short(ptr::read_unaligned(ptr.cast())),
             // bindings::enum_field_types::MYSQL_TYPE_LONG => Self::Long(ptr::read_unaligned(ptr.cast())),
             // bindings::enum_field_types::MYSQL_TYPE_FLOAT => Self::Float(ptr::read_unaligned(ptr.cast())),
             // bindings::enum_field_types::MYSQL_TYPE_DOUBLE => Self::Double(ptr::read_unaligned(ptr.cast())),
-            bindings::enum_field_types::MYSQL_TYPE_TINY => Self::I8(*ptr.cast()),
-            bindings::enum_field_types::MYSQL_TYPE_SHORT => Self::I16(*ptr.cast()),
+            bindings::enum_field_types::MYSQL_TYPE_TINY => Self::I8(tostr(bytes).parse().unwrap()),
+            bindings::enum_field_types::MYSQL_TYPE_SHORT => {
+                Self::I16(tostr(bytes).parse().unwrap())
+            }
             // This is yucky, `long` is `i32` on Windows but `i64` on nix. So, we load it as a `long` but
             // always store it as `i64`.
             bindings::enum_field_types::MYSQL_TYPE_LONG => {
-                Self::Long((*ptr.cast::<c_long>()).into())
+                Self::Long(tostr(bytes).parse().unwrap())
             }
-            bindings::enum_field_types::MYSQL_TYPE_LONGLONG => Self::LongLong(*ptr.cast()),
-            bindings::enum_field_types::MYSQL_TYPE_FLOAT => Self::F32(*ptr.cast()),
-            bindings::enum_field_types::MYSQL_TYPE_DOUBLE => Self::F64(*ptr.cast()),
+            bindings::enum_field_types::MYSQL_TYPE_LONGLONG => {
+                Self::LongLong(tostr(bytes).parse().unwrap())
+            }
+            bindings::enum_field_types::MYSQL_TYPE_FLOAT => {
+                Self::F32(tostr(bytes).parse().unwrap())
+            }
+            bindings::enum_field_types::MYSQL_TYPE_DOUBLE => {
+                Self::F64(tostr(bytes).parse().unwrap())
+            }
             bindings::enum_field_types::MYSQL_TYPE_NULL => Self::Null,
             bindings::enum_field_types::MYSQL_TYPE_TIMESTAMP => todo!(),
             bindings::enum_field_types::MYSQL_TYPE_INT24 => todo!(),
@@ -76,9 +84,9 @@ impl<'a> Value<'a> {
             bindings::enum_field_types::MYSQL_TYPE_TINY_BLOB
             | bindings::enum_field_types::MYSQL_TYPE_MEDIUM_BLOB
             | bindings::enum_field_types::MYSQL_TYPE_LONG_BLOB
-            | bindings::enum_field_types::MYSQL_TYPE_BLOB => Self::Blob(buf_callback()),
+            | bindings::enum_field_types::MYSQL_TYPE_BLOB => Self::Blob(bytes),
             bindings::enum_field_types::MYSQL_TYPE_VAR_STRING
-            | bindings::enum_field_types::MYSQL_TYPE_STRING => Self::String(buf_callback()),
+            | bindings::enum_field_types::MYSQL_TYPE_STRING => Self::String(bytes),
             bindings::enum_field_types::MYSQL_TYPE_GEOMETRY => todo!(),
             _ => todo!(),
         }
