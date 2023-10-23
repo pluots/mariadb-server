@@ -16,15 +16,28 @@ rm -f "${BUILD_DIR}/rust_target/debug/"*.so
 rm -f "${BUILD_DIR}/rust_target/release/"*.so
 
 # allow overriding with lld or mold
-c_flags="-fuse-ld=${LD:-ld}"
+# c_flags="-fuse-ld=${LD:-ld}"
+
+ld_flag=""
+linker="${BUILD_LD:-ld}"
+
+if [ "$linker" = "lld" ]; then
+    echo using lld linker
+    ld_flag="-DLLVM_ENABLE_LLD=ON"
+elif [ "$linker" != "ld" ]; then
+    echo only 'ld' and 'lld' currently supported
+    exit 1
+fi
+
+# export CC=${BUILD_CC:-cc}
+# export CXX=${BUILD_CXX:-c++}
 
 # We disable submodule updates and mroonga because they are two targets that
 # touch the source directory.
 cmake \
     -S/checkout\
     "-B${BUILD_DIR}" \
-    "-DCMAKE_C_FLAGS=${c_flags}" \
-    "-DCMAKE_CXX_FLAGS=${c_flags}" \
+    "$ld_flag" \
     -DCMAKE_C_COMPILER_LAUNCHER=sccache \
     -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
     -DCMAKE_BUILD_TYPE=Debug \

@@ -34,4 +34,6 @@ ENV CARGO_TARGET_DIR=/obj/build-cargo
 ENV BUILD_DIR=/obj/build-mariadb
 ENV SCCACHE_DIR=/obj/sccache
 ENV SCCACHE_CACHE_SIZE="1G"
-ENV LD=/usr/bin/lld
+ENV BUILD_LD=lld
+ENV CC=clang
+ENV CXX=clang++
