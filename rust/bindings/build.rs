@@ -155,7 +155,7 @@ fn run_bindgen_with_includes(search_paths: &[String]) -> Result<Bindings, Bindge
 /// Tell cargo how to find libmysqlclient.so
 fn specify_link() {
     // FIXME: this is a bit sloppy
-    println!("cargo:rustc-link-lib=dylib=mariadbclient");
+    // println!("cargo:rustc-link-lib=dylib=mariadbclient");
     // println!("cargo:rustc-link-lib=static=mysqlservices");
 
     // // todo: change to cmake_link_dirs, split by `;`

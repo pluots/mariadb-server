@@ -7,6 +7,7 @@ export BUILD_DIR=/obj/build-mariadb
 
 check1="/usr/lib/mysql/plugin/"
 check2="/usr/local/mysql/lib/plugin/"
+check3="/plugins/"
 
 if [ -d "$check1" ]; then
     echo "copying to dir1"
@@ -14,6 +15,9 @@ if [ -d "$check1" ]; then
 elif [ -d "$check2" ]; then
     echo "copying to dir2"
     export PLUGIN_DIR="$check2"
+elif [ -d "$check3" ]; then
+    echo "copying to dir3"
+    export PLUGIN_DIR="$check3"
 else
     echo "directory not yet created, exiting"
     exit

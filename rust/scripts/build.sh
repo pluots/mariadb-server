@@ -15,11 +15,33 @@ git config --global --add safe.directory '*'
 rm -f "${BUILD_DIR}/rust_target/debug/"*.so
 rm -f "${BUILD_DIR}/rust_target/release/"*.so
 
+# allow overriding with lld or mold
+# c_flags="-fuse-ld=${LD:-ld}"
+
+ld_flag=""
+cflags=""
+linker="${BUILD_LD:-ld}"
+
+if [ "$linker" = "lld" ]; then
+    echo using lld linker
+    ld_flag="-DLLVM_ENABLE_LLD=ON"
+    cflags="-fuse-ld=lld"
+elif [ "$linker" != "ld" ]; then
+    echo only 'ld' and 'lld' currently supported
+    exit 1
+fi
+
+# export CC=${BUILD_CC:-cc}
+# export CXX=${BUILD_CXX:-c++}
+
 # We disable submodule updates and mroonga because they are two targets that
 # touch the source directory.
 cmake \
     -S/checkout\
-    -B${BUILD_DIR} \
+    "-B${BUILD_DIR}" \
+    "$ld_flag" \
+    "-DCMAKE_C_FLAGS=${cflags}" \
+    "-DCMAKE_CXX_FLAGS=${cflags}" \
     -DCMAKE_C_COMPILER_LAUNCHER=sccache \
     -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
     -DCMAKE_BUILD_TYPE=Debug \
@@ -28,6 +50,7 @@ cmake \
     -DPLUGIN_MROONGA=NO \
     -DPLUGIN_ROCKSDB=NO \
     -DPLUGIN_SPIDER=NO \
+    -DPLUGIN_SPHINX=NO \
     -DPLUGIN_TOKUDB=NO \
     -G Ninja
 
