@@ -35,5 +35,3 @@ ENV BUILD_DIR=/obj/build-mariadb
 ENV SCCACHE_DIR=/obj/sccache
 ENV SCCACHE_CACHE_SIZE="1G"
 ENV BUILD_LD=lld
-ENV CC=clang
-ENV CXX=clang++

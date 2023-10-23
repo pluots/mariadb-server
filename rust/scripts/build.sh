@@ -19,11 +19,13 @@ rm -f "${BUILD_DIR}/rust_target/release/"*.so
 # c_flags="-fuse-ld=${LD:-ld}"
 
 ld_flag=""
+cflags=""
 linker="${BUILD_LD:-ld}"
 
 if [ "$linker" = "lld" ]; then
     echo using lld linker
     ld_flag="-DLLVM_ENABLE_LLD=ON"
+    cflags="-fuse-ld=lld"
 elif [ "$linker" != "ld" ]; then
     echo only 'ld' and 'lld' currently supported
     exit 1
@@ -38,6 +40,8 @@ cmake \
     -S/checkout\
     "-B${BUILD_DIR}" \
     "$ld_flag" \
+    "-DCMAKE_C_FLAGS=${cflags}" \
+    "-DCMAKE_CXX_FLAGS=${cflags}" \
     -DCMAKE_C_COMPILER_LAUNCHER=sccache \
     -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
     -DCMAKE_BUILD_TYPE=Debug \
