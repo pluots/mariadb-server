@@ -32,6 +32,7 @@ ENV RUST_BACKTRACE=1
 ENV RUST_LOG=debug
 ENV CARGO_TARGET_DIR=/obj/build-cargo
 ENV BUILD_DIR=/obj/build-mariadb
+ENV CMD_CCMAKE="ccmake -S/checkout -B${BUILD_DIR}"
 ENV SCCACHE_DIR=/obj/sccache
 ENV SCCACHE_CACHE_SIZE="1G"
 ENV BUILD_LD=lld

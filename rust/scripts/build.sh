@@ -50,6 +50,7 @@ cmake \
     -DPLUGIN_MROONGA=NO \
     -DPLUGIN_ROCKSDB=NO \
     -DPLUGIN_SPIDER=NO \
+    -DPLUGIN_SPHINX=NO \
     -DPLUGIN_TOKUDB=NO \
     -G Ninja
 

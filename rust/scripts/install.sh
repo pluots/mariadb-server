@@ -12,4 +12,6 @@ touch /error.log /general.log
 mkdir -p /usr/local/mysql/data
 chown -R mysql /usr/local/mysql/ /error.log /general.log
 
-/usr/local/mysql/scripts/mariadb-install-db --user=mysql
+/usr/local/mysql/scripts/mariadb-install-db \
+    --user=mysql \
+    --datadir=/usr/local/mysql/data

@@ -40,7 +40,9 @@ def parse_args():
 
     def add_nobuild(parser):
         parser.add_argument(
-            "--nobuild", action="store_true", help="skip the building step"
+            "--nobuild",
+            action="store_true",
+            help="assume MDB has been built recently, skip the building step",
         )
 
     def add_prebuilt(parser):
@@ -78,6 +80,7 @@ def parse_args():
     p_rebuild = subparsers.add_parser(
         "rebuild", help="rebuild files while a server is running"
     )
+    p_stop = subparsers.add_parser("stop", help="stop a running server")
 
     # argparse needs a way to differentiate arguments
     p_build.set_defaults(action="build")
@@ -85,6 +88,7 @@ def parse_args():
     p_shell.set_defaults(action="shell")
     p_test.set_defaults(action="test")
     p_rebuild.set_defaults(action="rebuild")
+    p_stop.set_defaults(action="stop")
 
     add_nobuild(p_start)
     add_nobuild(p_shell)
@@ -136,7 +140,9 @@ def docker_create_img(dockerfile):
     )
 
 
-def docker_run_inner(command: str, name: str, extra_docker_args: [str] = None):
+def docker_run_inner(
+    command: str, name: str, extra_docker_args: [str] = None, check=True
+):
     """Launch a docker"""
     extra_docker_args = extra_docker_args or []
     args = (
@@ -163,7 +169,7 @@ def docker_run_inner(command: str, name: str, extra_docker_args: [str] = None):
 
     print(args)
 
-    sp.run(args, check=True)
+    sp.run(args, check=check)
 
 
 def docker_run(
@@ -171,6 +177,7 @@ def docker_run(
     extra_docker_args: [str] = None,
     should_build: bool = True,
     name: str = "mdb-plugin-test",
+    check=True,
 ):
     """Build the docker builder image then run MariaDB with an optional build"""
     cmds = [MAKE_EXPORTS]
@@ -221,7 +228,15 @@ def main():
 
     elif args.action == "start":
         print("building then starting mariadb")
-        docker_run([INSTALL_CMD, START_SAFE_CMD], ["-it"], should_build=should_build)
+        docker_run(
+            [INSTALL_CMD, START_SAFE_CMD],
+            ["-it"],
+            should_build=should_build,
+            check=False,
+        )
+
+    elif args.action == "stop":
+        sp.run([LAUNCHER, "stop", DOCKER_NAME], check=True)
 
 
 if __name__ == "__main__":
