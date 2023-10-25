@@ -13,6 +13,7 @@ BUILD_CMD = f"{SCRIPT_DIR}/build.sh"
 COPY_PLUGIN_CMD = f"{SCRIPT_DIR}/copy_plugins.sh"
 INSTALL_CMD = f"{SCRIPT_DIR}/install.sh"
 LAUNCH_QUICK_CMD = f"{SCRIPT_DIR}/launch_quick.sh"
+LAUNCH_DEBUG_CMD = f"{SCRIPT_DIR}/launch_debug.sh"
 TEST_CMD = f"{SCRIPT_DIR}/run_mtr.sh"
 START_SAFE_CMD = f"{SCRIPT_DIR}/start_safe.sh"
 START_CMD = f"{SCRIPT_DIR}/start.sh"
@@ -110,6 +111,13 @@ def parse_args():
         default=False,
     )
 
+    p_start.add_argument(
+        "--debug",
+        help="launch with GDB server on port 2345",
+        action="store_true",
+        default=False,
+    )
+
     args = parser.parse_args()
     return args
 
@@ -154,6 +162,7 @@ def docker_run_inner(
             f"{MARIA_ROOT}:/checkout:ro",
             "--volume",
             f"{OBJ_DIR}:/obj",
+            "-p2345:2345", # GDB port
             "--rm",
         ]
         + extra_docker_args
@@ -224,12 +233,17 @@ def main():
 
     elif args.action == "test":
         print("building then testing mariadb")
-        docker_run([INSTALL_CMD, TEST_CMD], should_build=should_build)
+        docker_run([TEST_CMD], should_build=should_build)
 
     elif args.action == "start":
         print("building then starting mariadb")
+        if args.debug:
+            launch = LAUNCH_DEBUG_CMD
+        else:
+            launch = START_SAFE_CMD
+
         docker_run(
-            [INSTALL_CMD, START_SAFE_CMD],
+            [INSTALL_CMD, launch],
             ["-it"],
             should_build=should_build,
             check=False,

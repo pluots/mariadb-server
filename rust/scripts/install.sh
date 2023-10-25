@@ -4,15 +4,22 @@
 
 set -eaux
 
-touch /error.log /general.log
+mkdir -p /run/mysqld/
 mkdir /data
+mkdir /plugins
+touch /error.log /general.log
 
 "$BUILD_DIR/scripts/mariadb-install-db" \
-    --user=mysql \
+    --user=root \
+    --srcdir=/checkout \
+    "--builddir=$BUILD_DIR" \
     --datadir=/data
 
 ln -s "$BUILD_DIR/sql/mariadbd" "/usr/bin/mariadbd"
 
+cp /checkout/rust/scripts/my.cnf ~/.my.cnf
+
+/checkout/rust/scripts/copy_plugins.sh
 
 # Steps for full install
 # cmake --install "$BUILD_DIR"
