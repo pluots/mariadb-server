@@ -11,6 +11,7 @@ RUN apt-get update \
         cmake \
         cmake-curses-gui \
         gdb \
+        gdbserver \
         libboost-all-dev \
         less \
         liblz4-dev \
@@ -25,8 +26,9 @@ RUN apt-get update \
         vim-tiny \
         wget \
         xxd \
-        clang
-# ^ clang has to go last because it doesn't play well with other installs
+        clang \
+    && rm -rf /var/lib/apt/lists/*
+    # ^ clang has to go last because it doesn't play well with other installs
 
 ENV RUST_BACKTRACE=1
 ENV RUST_LOG=debug
