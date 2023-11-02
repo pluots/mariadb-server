@@ -140,12 +140,11 @@ impl SysVarConstString {
     /// # Panics
     ///
     /// Panics if it gets a non-UTF8 C string
-    pub fn get(&self) -> String {
+    pub fn get(&self) -> &'static str {
         let ptr = self.0.load(Ordering::SeqCst);
         let cs = unsafe { CStr::from_ptr(ptr) };
         cs.to_str()
             .unwrap_or_else(|_| panic!("got non-UTF8 string like {}", cs.to_string_lossy()))
-            .to_owned()
     }
 }
 

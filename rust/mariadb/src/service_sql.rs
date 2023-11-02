@@ -339,6 +339,9 @@ impl Drop for Rows<'_> {
 impl<'res> Iterator for Rows<'res> {
     type Item = Row<'res>;
 
+    // NOTE: this implementation works when all rows are stored. If each one needs to be fetched/
+    // freed (e.g. mysql_use_result) then this will need different lifetime setup so you can't have
+    // two rows existing at once
     fn next(&mut self) -> Option<Self::Item> {
         // type `bindings::MYSQL_ROW`, `*mut *mut c_char`
         let rptr = unsafe { global_func!(mysql_fetch_row_func)(self.inner?.as_ptr()) };
@@ -366,10 +369,9 @@ pub struct Row<'row> {
 
 impl Row<'_> {
     /// Get the field of a given index. Panics if out of range
-    pub fn field_value(&self, index: usize) -> Value {
+    pub fn field(&self, index: usize) -> Value {
         let meta = &self.field_meta[index];
         let field_ptr = self.field_ptrs[index];
-        dbg!(field_ptr);
         unsafe { Value::from_str_ptr(meta.ftype(), field_ptr, meta.max_length()) }
     }
 
@@ -385,7 +387,7 @@ impl Row<'_> {
     /// Iterator over values in the row
     pub fn fields(&self) -> impl Iterator<Item = Field> {
         self.field_meta.iter().enumerate().map(|(idx, meta)| Field {
-            value: self.field_value(idx),
+            value: self.field(idx),
             meta,
         })
     }

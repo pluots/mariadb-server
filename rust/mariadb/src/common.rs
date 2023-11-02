@@ -91,4 +91,20 @@ impl<'a> Value<'a> {
             _ => todo!(),
         }
     }
+
+    pub fn as_int(&self) -> Option<i64> {
+        match self {
+            Value::I8(v) => Some((*v).into()),
+            Value::I16(v) => Some((*v).into()),
+            Value::Long(v) | Value::LongLong(v) => Some((*v).into()),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> Option<&'a str> {
+        match self {
+            Value::String(v) => std::str::from_utf8(v).ok(),
+            _ => None,
+        }
+    }
 }
