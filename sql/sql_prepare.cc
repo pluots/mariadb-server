@@ -6311,3 +6311,4 @@ extern "C" MYSQL *mysql_real_connect_local(MYSQL *mysql)
   DBUG_PRINT("exit",("Mysql handler: %p", mysql));
   DBUG_RETURN(mysql);
 }
+
