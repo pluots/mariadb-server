@@ -370,7 +370,7 @@ impl Row<'_> {
         let meta = &self.field_meta[index];
         let field_ptr = self.field_ptrs[index];
         dbg!(field_ptr);
-        unsafe { Value::from_ptr(meta.ftype(), field_ptr.cast(), meta.length()) }
+        unsafe { Value::from_str_ptr(meta.ftype(), field_ptr, meta.max_length()) }
     }
 
     pub const fn field_info(&self, index: usize) -> &FieldMeta {
