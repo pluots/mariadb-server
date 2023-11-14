@@ -7,7 +7,7 @@ edition = '2021'
 crate-type = ["cdylib"]
 
 [dependencies]
-clevis = "0.1.0"
+clevis = "0.4.0"
 josekit = "0.8.3"
 mariadb = { path = "../../mariadb" }
 ureq = "2.7.1"

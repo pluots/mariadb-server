@@ -96,8 +96,7 @@ impl<'a> Value<'a> {
         match self {
             Value::I8(v) => Some((*v).into()),
             Value::I16(v) => Some((*v).into()),
-            Value::Long(v) => Some((*v).into()),
-            Value::LongLong(v) => Some((*v).into()),
+            Value::Long(v) | Value::LongLong(v) => Some((*v).into()),
             _ => None,
         }
     }
