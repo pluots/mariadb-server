@@ -418,6 +418,8 @@ const char *my_thread_name(void)
 {
   char name_buff[100];
   struct st_my_thread_var *tmp=my_thread_var;
+  if (!tmp)
+    return "thd_nameless";
   if (!tmp->name[0])
   {
     my_thread_id id= my_thread_dbug_id();

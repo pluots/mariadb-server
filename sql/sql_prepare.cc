@@ -6279,7 +6279,8 @@ extern "C" MYSQL *mysql_real_connect_local(MYSQL *mysql)
     new_thd= new THD(0);
     local_connection_thread_count++;
     new_thd->thread_stack= (char*) &thd_orig;
-    new_thd->store_globals();
+    if (my_thread_var)
+      new_thd->store_globals();
     new_thd->security_ctx->skip_grants();
     new_thd->query_cache_is_applicable= 0;
     new_thd->variables.wsrep_on= 0;
@@ -6316,4 +6317,3 @@ extern "C" MYSQL *mysql_real_connect_local(MYSQL *mysql)
   DBUG_PRINT("exit",("Mysql handler: %p", mysql));
   DBUG_RETURN(mysql);
 }
-
