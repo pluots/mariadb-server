@@ -38,25 +38,38 @@ pub trait WrapKeyMgr: KeyManager {
         dstbuf: *mut c_uchar,
         buflen: *mut c_uint,
     ) -> c_uint {
+        let key_len = match Self::key_length(key_id, version) {
+            Ok(v) => v,
+            Err(e) => {
+                return e as c_uint;
+            }
+        };
+
         if dstbuf.is_null() {
             // Passing a null for `dstbuf` indicates that the key length is being queried
-            match Self::key_length(key_id, version) {
-                Ok(v) => *buflen = v.try_into().unwrap(),
-                Err(e) => {
-                    return e as c_uint;
-                }
-            }
+            *buflen = key_len.try_into().unwrap();
             return bindings::ENCRYPTION_KEY_BUFFER_TOO_SMALL;
         }
 
         // SAFETY: caller guarantees validity
         let buf = slice::from_raw_parts_mut(dstbuf, (*buflen).try_into().unwrap());
 
+        // FIXME: I don't know why it seems like MDB doesn't provide a buffer for the correct
+        // `key_len` after it has been queried, it seems to always provide 32 bytes instead.
+        let Some(sized_buf) = buf.get_mut(..key_len) else {
+            // This should never be reached
+            error!("key requires {key_len} bytes but received only {}", buf.len());
+            return bindings::ENCRYPTION_KEY_BUFFER_TOO_SMALL;
+        };
+
         // If successful, return 0. If an error occurs, return it
-        match Self::get_key(key_id, version, buf) {
-            Ok(()) => 0,
-            Err(e) => e as c_uint,
-        }
+        let (ret, new_buflen) = match Self::get_key(key_id, version, sized_buf) {
+            Ok(()) => (0, key_len.try_into().unwrap()),
+            Err(e) => (e as c_uint, 0),
+        };
+
+        *buflen = new_buflen;
+        ret
     }
 }
 

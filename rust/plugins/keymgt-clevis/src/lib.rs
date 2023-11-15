@@ -4,7 +4,7 @@
 use std::cell::UnsafeCell;
 use std::ffi::c_void;
 use std::fmt::Write;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicU32, Ordering, AtomicUsize};
 use std::sync::Mutex;
 
 use josekit::jws;
@@ -18,8 +18,10 @@ use mariadb::service_sql::{ClientError, Connection, Rows};
 /// Table to store key data
 const KEY_TABLE: &str = "mysql.clevis_keys";
 
-/// Max length a key can be, used for table size and buffer checking
-const KEY_BYTES: usize = 16;
+/// Max length a key can be, we allow for an AES256-GCM key.
+// FIXME: it seems like the encryption plugin should really determine this - what happens if it
+// gets the wrong size? Does too long get truncated? Does too short go through a KDF?
+const KEY_BYTES: usize = 32;
 
 /// String system variable to set server address
 // TODO: when recovering keys, do we want to use the stored URL or this variable?
@@ -142,7 +144,7 @@ impl KeyManager for KeyMgtClevis {
 
             let key_id_col = row.field(0).as_int();
             let key_version_col = row.field(1).as_int();
-            let meta_str_col = row.field(2).as_str();
+            let meta_str_col = row.field(2).as_bytes();
 
             if key_id_col.is_none() || key_version_col.is_none() || meta_str_col.is_none() {
                 error!("invalid columns for kid {key_id} version {key_version}");
@@ -196,18 +198,13 @@ fn tang_make_new_key() -> Result<String, KeyError> {
 fn tang_retrieve_key(
     key_id: i64,
     key_version: i64,
-    meta_str: &str,
+    meta_str: &[u8],
     dst: &mut [u8],
 ) -> Result<(), KeyError> {
-    if dst.len() != KEY_BYTES {
-        error!(
-            "key requires {KEY_BYTES} bytes but `dst` is only {}",
-            dst.len()
-        );
-        return Err(KeyError::Other);
-    }
+    // The rust wrapper handles the failure mode
+    assert!(dst.len() == KEY_BYTES, "received incorrect key destination buffer size");
 
-    let meta = clevis::KeyMeta::from_json(meta_str).map_err(|e| {
+    let meta = clevis::KeyMeta::from_json_bytes(meta_str).map_err(|e| {
         error!("failure parsing metadata at id {key_id} version {key_version}: {e}");
         KeyError::Other
     })?;

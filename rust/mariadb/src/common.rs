@@ -101,9 +101,18 @@ impl<'a> Value<'a> {
         }
     }
 
+    /// Note: a lot of things that would probably be strings actually show up as blobs. Likely
+    /// encoding related.
     pub fn as_str(&self) -> Option<&'a str> {
         match self {
             Value::String(v) => std::str::from_utf8(v).ok(),
+            _ => None,
+        }
+    }
+
+    pub fn as_bytes(&self) -> Option<&'a [u8]> {
+        match self {
+            Value::String(v) | Value::Blob(v) | Value::Json(v) => Some(*v),
             _ => None,
         }
     }
