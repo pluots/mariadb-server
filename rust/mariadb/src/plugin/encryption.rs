@@ -96,6 +96,9 @@ pub trait KeyManager: Sized {
     /// Calculate the length of a key. Usually this is constant, but the key ID
     /// and version can be taken into account if needed.
     ///
+    /// This will be called before each `get_key` call to prepare the destination buffer
+    /// size.
+    ///
     /// On the C side, this function is combined with `get_key`.
     fn key_length(key_id: u32, key_version: u32) -> Result<usize, KeyError>;
 }
