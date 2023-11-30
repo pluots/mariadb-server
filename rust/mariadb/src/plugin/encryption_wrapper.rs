@@ -58,7 +58,10 @@ pub trait WrapKeyMgr: KeyManager {
         // `key_len` after it has been queried, it seems to always provide 32 bytes instead.
         let Some(sized_buf) = buf.get_mut(..key_len) else {
             // This should never be reached
-            error!("key requires {key_len} bytes but received only {}", buf.len());
+            error!(
+                "key requires {key_len} bytes but received only {}",
+                buf.len()
+            );
             return bindings::ENCRYPTION_KEY_BUFFER_TOO_SMALL;
         };
 
