@@ -19,7 +19,7 @@ env:
 
 jobs:
   clippy:
-    name: "Clippy (cargo clippy)"
+    name: Check with Clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -44,7 +44,7 @@ jobs:
             # - os: macos-latest
             #   name: mac
 
-    name: "Test on ${{ matrix.name }} (cargo test)"
+    name: Unit tests on ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -53,7 +53,7 @@ jobs:
       - run: cargo test --manifest-path rust/Cargo.toml
 
   mtr:
-    name: "Run mtr integration tests"
+    name: Run mtr integration tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -113,7 +113,7 @@ jobs:
           key: ${{ steps.cache-build-restore.outputs.cache-primary-key }}
 
   fmt:
-    name: "Format (cargo fmt)"
+    name: Check Rust formatting
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -122,6 +122,16 @@ jobs:
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --manifest-path rust/Cargo.toml --all -- --check
+
+  audit:
+    name: Audit dependencies for security & license compatibility
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Run security audit with cargo-audit
+      uses: rustsec/audit-check@v1.4.1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
 
   doc:
     name: "Docs (cargo doc) & Pub"
