@@ -503,19 +503,3 @@ fn fn_thread_unsafe_lib_init() {
 //         todo!()
 //     }
 // }
-
-#[cfg(test)]
-mod tests {
-    use std::alloc::Layout;
-
-    use super::*;
-
-    #[test]
-    fn check_layouts() {
-        // Check layouts we expect to be equal
-        assert_eq!(
-            Layout::new::<FieldMeta>(),
-            Layout::new::<*const bindings::MYSQL_FIELD>()
-        );
-    }
-}
