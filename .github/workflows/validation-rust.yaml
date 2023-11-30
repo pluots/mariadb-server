@@ -127,13 +127,19 @@ jobs:
     name: Audit dependencies for security & license compatibility
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Run security audit with cargo-audit
-      uses: rustsec/audit-check@v1.4.1
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Audit dependency licenses with cargo-deny
-      uses: EmbarkStudios/cargo-deny-action@v1
+      - uses: actions/checkout@v3
+      - uses: taiki-e/install-action@cargo-binstall
+      - run: cargo binstall cargo-audit
+      - name: Run security audit with cargo-audit
+        run: cd rust/ && cargo audit
+      - name: Audit dependency licenses with cargo-deny
+        uses: EmbarkStudios/cargo-deny-action@v1
+        with:
+          arguments: --manifest-path rust/Cargo.toml
+          
+    #   uses: rustsec/audit-check@v1.4.1
+    #   with:
+    #     token: ${{ secrets.GITHUB_TOKEN }}
 
   doc:
     name: "Docs (cargo doc) & Pub"
