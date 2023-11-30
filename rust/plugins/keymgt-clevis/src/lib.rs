@@ -4,7 +4,7 @@
 use std::cell::UnsafeCell;
 use std::ffi::c_void;
 use std::fmt::Write;
-use std::sync::atomic::{AtomicU32, Ordering, AtomicUsize};
+use std::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
 use std::sync::Mutex;
 
 use josekit::jws;
@@ -202,7 +202,10 @@ fn tang_retrieve_key(
     dst: &mut [u8],
 ) -> Result<(), KeyError> {
     // The rust wrapper handles the failure mode
-    assert!(dst.len() == KEY_BYTES, "received incorrect key destination buffer size");
+    assert!(
+        dst.len() == KEY_BYTES,
+        "received incorrect key destination buffer size"
+    );
 
     let meta = clevis::KeyMeta::from_json_bytes(meta_str).map_err(|e| {
         error!("failure parsing metadata at id {key_id} version {key_version}: {e}");
