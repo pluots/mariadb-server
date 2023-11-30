@@ -132,6 +132,8 @@ jobs:
       uses: rustsec/audit-check@v1.4.1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Audit dependency licenses with cargo-deny
+      uses: EmbarkStudios/cargo-deny-action@v1
 
   doc:
     name: "Docs (cargo doc) & Pub"
