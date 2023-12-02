@@ -110,7 +110,7 @@ pub enum License {
 impl License {
     #[must_use]
     #[doc(hidden)]
-    pub const fn to_license_registration(self) -> c_int {
+    pub const fn to_maria_int(self) -> c_int {
         self as c_int
     }
 }
@@ -151,7 +151,7 @@ pub enum PluginType {
 impl PluginType {
     #[must_use]
     #[doc(hidden)]
-    pub const fn to_ptype_registration(self) -> c_int {
+    pub const fn to_maria_int(self) -> c_int {
         self as c_int
     }
 }
@@ -171,7 +171,7 @@ pub enum Maturity {
 impl Maturity {
     #[must_use]
     #[doc(hidden)]
-    pub const fn to_maturity_registration(self) -> c_uint {
+    pub const fn to_maria_hint(self) -> c_uint {
         self as c_uint
     }
 }
@@ -189,5 +189,53 @@ pub trait Init {
     /// Deinitialize the plugin
     fn deinit() -> Result<(), InitError> {
         Ok(())
+    }
+}
+
+macro_rules! plugin_common {
+    (
+        st_maria_plugin_fields
+        name: $plugin_name:literal,
+        author: $author:literal,
+        description: $description:literal,
+        license: $license:ty,
+        maturity: $maturity:ty,
+        version: $version:literal,
+    ) => {
+        name: $crate::internals::cstr!($name).as_ptr(),
+        author: $crate::internals::cstr!($author).as_ptr(),
+        descr: $crate::internals::cstr!($description).as_ptr(),
+        license: $crate::plugin::License::$license.to_license_registration(),
+        // init
+        // deinit
+        version: todo!(),
+        status_vars: ::std::ptr::null_mut(),
+        system_vars: ::std::ptr::null_mut(),
+        version_info: $crate::internal::cstr!($version).as_ptr(),
+        maturity: $crate::plugin::Maturity::$maturity.to_maturity_registration()
+    }
+}
+
+macro_rules! plugin_encryption {
+    (
+        key_manager: $key_mgr:ty,
+        name: $plugin_name:literal,
+        author: $author:literal,
+        description: $description:literal,
+        license: $license:ty,
+        maturity: $maturity:ty,
+        version: $version:literal,
+    ) => {
+        $crate::bindings::st_maria_plugin {
+            $crate::internals::plugin_common!{st_maria_plugin_fields
+                type: $crate::plugin::internals::
+                name: $plugin_name,
+                author: $author,
+                description: $description,
+                license: $license,
+                maturity: $maturity,
+                version: $version,
+            }
+        }
     }
 }
