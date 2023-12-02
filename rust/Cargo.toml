@@ -11,6 +11,7 @@ members = [
     "examples/keymgt-debug-rs",
     "examples/encryption-simple-rs",
     "examples/encryption-aes-rs",
+    "examples/ftparser-simple",
     "plugins/keymgt-clevis",
     "plugins/encryption-file-chacha",
     "test-runner",
