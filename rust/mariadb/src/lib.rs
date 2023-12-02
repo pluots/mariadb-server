@@ -21,6 +21,7 @@ mod common;
 mod helpers;
 pub mod plugin;
 pub mod service_sql;
+mod util;
 
 #[doc(inline)]
 pub use common::*;
@@ -34,6 +35,9 @@ pub mod internals {
 
     pub use super::helpers::UnsafeSyncCell;
 }
+
+/// Just a more intuitive type alias for a pass/fail `Result` with no contents.
+pub type EmptyResult = Result<(), ()>;
 
 /// Our main logger config
 ///

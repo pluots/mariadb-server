@@ -72,6 +72,7 @@ use std::str::FromStr;
 use mariadb_sys as bindings;
 pub mod encryption;
 mod encryption_wrapper;
+pub mod ftparser;
 mod variables;
 mod variables_parse;
 mod wrapper;
