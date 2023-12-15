@@ -14,7 +14,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use bindgen::callbacks::{DeriveInfo, MacroParsingBehavior, ParseCallbacks};
-use bindgen::{BindgenError, Bindings, EnumVariation};
+use bindgen::{Bindings, EnumVariation};
 
 // `math.h` seems to double define some things, To avoid this, we ignore them.
 const IGNORE_MACROS: [&str; 20] = [
@@ -41,6 +41,58 @@ const IGNORE_MACROS: [&str; 20] = [
 ];
 
 const DERIVE_COPY_NAMES: [&str; 1] = ["enum_field_types"];
+
+type Error = Box<dyn std::error::Error>;
+
+fn main() {
+    // Tell cargo to invalidate the built crate whenever the wrapper changes
+    println!("cargo:rerun-if-changed=src/wrapper.h");
+
+
+    let cmake_paths = include_paths_from_cmake().or(&[mariadb_root()]);
+    // let bindings = make_bindings_with_includes(&cmake_paths)
+    //     .or_else(|_| make_bindings_with_includes(&[mariadb_root()]))
+    //     .or_else(|_| make_bindings_with_includes(&configure_returning_incl_paths()))
+    //     .unwrap_or_else(|e| panic!("Unable to generate bindings: {e}"));
+
+
+    specify_link();
+}
+
+fn make_bindings() {
+    // Write the bindings to the $OUT_DIR/bindings.rs file.
+    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let finalize_bindings = |bindings| bindings.
+        .write_to_file(out_path.join("bindings.rs"))
+        .expect("couldn't write bindings");
+    let try_bindings = |bindings| {
+        bindings
+        .write_to_file(out_path.join("bindings.rs"))
+        .expect("couldn't write bindings");
+
+        // TODO: make cpp thing
+        return;
+    };
+    
+    let mut incl_paths = [
+        include_paths_from_cmake(),
+        Some(vec![mariadb_root()]),
+        Some(configure_returning_incl_paths()),
+    ];
+
+    if let Some(paths) = include_paths_from_cmake() {
+        if let Some(bindings) = make_bindings_with_includes(&paths) {
+            finalize_bindings(bindings);
+            // TODO: make cpp thing
+            return;
+        }
+    }
+
+    if let Some(bindings) = make_bindings_with_includes(&[mariadb_root()]) {
+        
+    }
+    todo!()
+}
 
 #[derive(Debug)]
 struct BuildCallbacks(HashSet<String>);
@@ -81,19 +133,19 @@ fn mariadb_root() -> String {
 }
 
 /// Find paths provided by CMake environment variables
-fn include_paths_from_cmake() -> Option<[String; 2]> {
+fn include_paths_from_cmake() -> Option<Vec<String>> {
     if let Ok(src_dir) = env::var("CMAKE_SOURCE_DIR") {
         let Ok(dst_dir) = env::var("CMAKE_BINARY_DIR") else {
             panic!("CMAKE_SOURCE_DIR set but CMAKE_BINARY_DIR unset");
         };
-        Some([src_dir, dst_dir])
+        Some(vec![src_dir, dst_dir])
     } else {
         None
     }
 }
 
 /// Run cmake in our temp directory
-fn configure_returning_incl_paths() -> [String; 2] {
+fn configure_returning_incl_paths() -> Vec<String> {
     let root = mariadb_root();
     let output_dir = format!("{}/cmake", env::var("OUT_DIR").unwrap());
 
@@ -104,22 +156,31 @@ fn configure_returning_incl_paths() -> [String; 2] {
         .output()
         .expect("failed to invoke cmake");
 
-    [root, output_dir]
+    vec![root, output_dir]
 }
 
 /// Given some include directories, see if bindgen works
-fn run_bindgen_with_includes(search_paths: &[String]) -> Result<Bindings, BindgenError> {
-    let incl_args = search_paths
+fn make_bindings_with_includes(search_paths: &[String]) -> Result<Bindings, Error> {
+    let incl_args: Vec<_> = search_paths
         .iter()
-        .flat_map(|path| [format!("-I{path}/sql"), format!("-I{path}/include")]);
+        .flat_map(|path| [format!("-I{path}/sql"), format!("-I{path}/include")])
+        .collect();
 
+    let bindings = invoke_bindgen(&incl_args)?;
+    invoke_autocxx(search_paths)?;
+
+    Ok(bindings)
+}
+
+/// Create bindings to all C structs via bindgen
+fn invoke_bindgen(include_args: &[String]) -> Result<Bindings, Error> {
     bindgen::Builder::default()
         // The input header we would like to generate
         // bindings for.
         .header("src/wrapper.h")
         // Fix math.h double defines
         .parse_callbacks(Box::new(BuildCallbacks::new()))
-        .clang_args(incl_args)
+        .clang_args(include_args)
         .clang_arg("-xc++")
         .clang_arg("-std=c++17")
         // Don't derive copy for structs
@@ -150,6 +211,15 @@ fn run_bindgen_with_includes(search_paths: &[String]) -> Result<Bindings, Bindge
         .blocklist_item("sql_service")
         // Finish the builder and generate the bindings.
         .generate()
+        .map_err(Into::into)
+}
+
+/// Use autocxx for more complex C++ classes
+fn invoke_autocxx(include_paths: &[String]) -> Result<(), Error> {
+    let mut b = autocxx_build::Builder::new("src/cpp_classes.rs", include_paths).build()?;
+    // This assumes all your C++ bindings are in main.rs
+    b.flag_if_supported("-std=c++17").compile("autocxx-demo");
+    Ok(())
 }
 
 /// Tell cargo how to find libmysqlclient.so
@@ -165,23 +235,4 @@ fn specify_link() {
     // println!("cargo:rustc-link-lib=static=libmysqlservices");
 
     // println!("cargo:rustc-link-lib=static=mysqlservices");
-}
-
-fn main() {
-    // Tell cargo to invalidate the built crate whenever the wrapper changes
-    println!("cargo:rerun-if-changed=src/wrapper.h");
-
-    let bindings = include_paths_from_cmake()
-        .and_then(|paths| run_bindgen_with_includes(&paths).ok())
-        .or_else(|| run_bindgen_with_includes(&[mariadb_root()]).ok())
-        .or_else(|| run_bindgen_with_includes(&configure_returning_incl_paths()).ok())
-        .expect("Unable to generate bindings");
-
-    // Write the bindings to the $OUT_DIR/bindings.rs file.
-    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
-    bindings
-        .write_to_file(out_path.join("bindings.rs"))
-        .expect("couldn't write bindings");
-
-    specify_link();
 }
