@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = '2021'
 license = "GPL-2.0-only"
 
-
 [build-dependencies]
-bindgen = "0.68.1"
+bindgen = "0.69.1"
 cmake = "0.1.50"
-doxygen-rs = "0.4.2"
+regex = "1.10.2"
+walkdir = "2.4.0"

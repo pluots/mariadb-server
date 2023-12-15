@@ -56,7 +56,7 @@ pub unsafe extern "C" fn default_deinit_notype<P: PluginMeta>(_: *mut c_void) ->
 }
 
 /// What to run when every plugin is loaded.
-fn init_common() {
+pub(super) fn init_common() {
     configure_logger!();
     env::set_var("RUST_BACKTRACE", "1");
 }
