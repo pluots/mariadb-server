@@ -1,0 +1,20 @@
+# Define our crates within a workspace
+
+[workspace]
+resolver = "2"
+members = [
+    "rust/mariadb-sys",
+    "rust/mariadb",
+    "rust/macros",
+    "rust/common/encryption-common",
+    "rust/examples/keymgt-basic-rs",
+    "rust/examples/keymgt-debug-rs",
+    "rust/examples/encryption-simple-rs",
+    "rust/examples/encryption-aes-rs",
+    "rust/examples/ftparser-simple",
+    "rust/examples/storage-simple",
+    "rust/examples/storage-csv",
+    "rust/plugins/keymgt-clevis",
+    "rust/plugins/encryption-file-chacha",
+    "rust/test-runner", 
+]

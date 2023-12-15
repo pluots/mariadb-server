@@ -4,4 +4,4 @@ error[E0560]: struct `sysvar_str_t` has no field named `blk_sz`
 22 |             interval: "50"
    |                       ^^^^ `sysvar_str_t` does not have this field
    |
-   = note: available fields are: `check`, `update`
+   = note: all struct fields are already assigned

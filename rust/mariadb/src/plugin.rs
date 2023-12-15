@@ -70,9 +70,15 @@ use std::ffi::{c_int, c_uint};
 use std::str::FromStr;
 
 use mariadb_sys as bindings;
+
 pub mod encryption;
+
 mod encryption_wrapper;
 pub mod ftparser;
+#[cfg(feature = "storage")]
+pub mod storage;
+#[cfg(feature = "storage")]
+mod storage_wrapper;
 mod variables;
 mod variables_parse;
 mod wrapper;
@@ -90,6 +96,10 @@ pub mod internals {
     pub use super::encryption_wrapper::{
         wrap_crypt_ctx_finish, wrap_crypt_ctx_init, wrap_crypt_ctx_size, wrap_crypt_ctx_update,
         wrap_encrypted_length, WrapKeyMgr,
+    };
+    #[cfg(feature = "storage")]
+    pub use super::storage_wrapper::{
+        build_handler_vtable, wrap_storage_deinit_fn, wrap_storage_init_fn, HandlertonMeta,
     };
     pub use super::variables::SysVarInterface;
     pub use super::wrapper::{

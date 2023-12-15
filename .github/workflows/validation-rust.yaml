@@ -157,7 +157,7 @@ jobs:
         run: |
           rm -rf target/doc/ rust/target/doc/
           cargo doc --manifest-path rust/mariadb/Cargo.toml --no-deps
-          cargo doc --manifest-path rust/bindings/Cargo.toml --no-deps
+          cargo doc --manifest-path rust/mariadb-sys/Cargo.toml --no-deps
       - run: |
           echo `pwd`/rust/target/doc >> $GITHUB_PATH
           # fake index.html so github likes us

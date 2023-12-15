@@ -525,19 +525,19 @@ DECLARE_MYSQL_THDVAR_SIMPLE(name, double) = { \
 
 struct st_mysql_plugin
 {
-  int type;             /* the plugin type (a MYSQL_XXX_PLUGIN value)   */
-  void *info;           /* pointer to type-specific plugin descriptor   */
-  const char *name;     /* plugin name                                  */
-  const char *author;   /* plugin author (for I_S.PLUGINS)              */
-  const char *descr;    /* general descriptive text (for I_S.PLUGINS)   */
-  int license;          /* the plugin license (PLUGIN_LICENSE_XXX)      */
-  int (*init)(void *);  /* the function to invoke when plugin is loaded */
-  int (*deinit)(void *);/* the function to invoke when plugin is unloaded */
-  unsigned int version; /* plugin version (for I_S.PLUGINS)             */
+  int type;             /**< the plugin type (a MYSQL_XXX_PLUGIN value)   */
+  void *info;           /**< pointer to type-specific plugin descriptor   */
+  const char *name;     /**< plugin name                                  */
+  const char *author;   /**< plugin author (for I_S.PLUGINS)              */
+  const char *descr;    /**< general descriptive text (for I_S.PLUGINS)   */
+  int license;          /**< the plugin license (PLUGIN_LICENSE_XXX)      */
+  int (*init)(void *);  /**< the function to invoke when plugin is loaded */
+  int (*deinit)(void *);/**< the function to invoke when plugin is unloaded */
+  unsigned int version; /**< plugin version (for I_S.PLUGINS)             */
   struct st_mysql_show_var *status_vars;
   struct st_mysql_sys_var **system_vars;
-  void * __reserved1;   /* reserved for dependency checking             */
-  unsigned long flags;  /* flags for plugin */
+  void * __reserved1;   /**< reserved for dependency checking             */
+  unsigned long flags;  /**< flags for plugin */
 };
 
 /*
@@ -549,19 +549,19 @@ struct st_mysql_plugin
 
 struct st_maria_plugin
 {
-  int type;             /* the plugin type (a MYSQL_XXX_PLUGIN value)   */
-  void *info;           /* pointer to type-specific plugin descriptor   */
-  const char *name;     /* plugin name                                  */
-  const char *author;   /* plugin author (for SHOW PLUGINS)             */
-  const char *descr;    /* general descriptive text (for SHOW PLUGINS ) */
-  int license;          /* the plugin license (PLUGIN_LICENSE_XXX)      */
-  int (*init)(void *);  /* the function to invoke when plugin is loaded */
-  int (*deinit)(void *);/* the function to invoke when plugin is unloaded */
-  unsigned int version; /* plugin version (for SHOW PLUGINS)            */
+  int type;             /**< the plugin type (a MYSQL_XXX_PLUGIN value)   */
+  void *info;           /**< pointer to type-specific plugin descriptor   */
+  const char *name;     /**< plugin name                                  */
+  const char *author;   /**< plugin author (for SHOW PLUGINS)             */
+  const char *descr;    /**< general descriptive text (for SHOW PLUGINS ) */
+  int license;          /**< the plugin license (PLUGIN_LICENSE_XXX)      */
+  int (*init)(void *);  /**< the function to invoke when plugin is loaded */
+  int (*deinit)(void *);/**< the function to invoke when plugin is unloaded */
+  unsigned int version; /**< plugin version (for SHOW PLUGINS)            */
   struct st_mysql_show_var *status_vars;
   struct st_mysql_sys_var **system_vars;
-  const char *version_info;  /* plugin version string */
-  unsigned int maturity; /* MariaDB_PLUGIN_MATURITY_XXX */
+  const char *version_info;  /**< plugin version string */
+  unsigned int maturity; /**< MariaDB_PLUGIN_MATURITY_XXX */
 };
 
 /*************************************************************************

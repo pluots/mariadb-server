@@ -6,6 +6,7 @@
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::option_if_let_else)]
 
+mod dbug;
 mod fields;
 mod helpers;
 mod parse_vars;
@@ -18,4 +19,10 @@ use proc_macro::TokenStream;
 #[proc_macro]
 pub fn register_plugin(item: TokenStream) -> TokenStream {
     register_plugin::entry(item)
+}
+
+/// Instrument a function call with `dbug`.
+#[proc_macro_attribute]
+pub fn dbug_instrument(attr: TokenStream, item: TokenStream) -> TokenStream {
+    dbug::instrument(attr, item)
 }

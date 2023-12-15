@@ -14,7 +14,7 @@ use std::{fmt, mem, slice, str};
 use log::{debug, error, trace};
 
 pub use self::error::ClientError;
-use crate::helpers::UnsafeSyncCell;
+use crate::util::UnsafeSyncCell;
 use crate::{bindings, Value};
 
 /// Type wrapper for `Result` with a `ClientError` error variant
@@ -443,7 +443,7 @@ impl FieldMeta<'_> {
         str::from_utf8(name_slice).expect("non-utf8 identifier")
     }
 
-    fn ftype(&self) -> bindings::enum_field_types {
+    fn ftype(&self) -> bindings::enum_field_types::Type {
         self.inner.type_
     }
 }

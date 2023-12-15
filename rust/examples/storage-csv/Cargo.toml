@@ -1,0 +1,11 @@
+[package]
+name = "storage-csv"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-2.0-only"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+mariadb = { path = "../../mariadb", features = ["storage"] }
