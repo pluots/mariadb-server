@@ -7,9 +7,9 @@ license = "GPL-2.0-only"
 
 [build-dependencies]
 autocxx-build = "0.26.0"
-bindgen = "0.68.1"
+bindgen = "0.69.1"
 cmake = "0.1.50"
-doxygen-rs = "0.4.2"
+regex = "1.10.2"
 
 [dependencies]
 autocxx = "0.26.0"

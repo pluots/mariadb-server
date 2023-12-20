@@ -8,37 +8,13 @@
 //! - Check if the source directory root can be used, use that if so
 //! - Configure it outselves, output in a temp directory
 
-use std::collections::HashSet;
 use std::env;
 use std::path::PathBuf;
 use std::process::Command;
 
-use bindgen::callbacks::{DeriveInfo, MacroParsingBehavior, ParseCallbacks};
+use bindgen::callbacks::{DeriveInfo, ParseCallbacks};
 use bindgen::{Bindings, EnumVariation};
-
-// `math.h` seems to double define some things, To avoid this, we ignore them.
-const IGNORE_MACROS: [&str; 20] = [
-    "FE_DIVBYZERO",
-    "FE_DOWNWARD",
-    "FE_INEXACT",
-    "FE_INVALID",
-    "FE_OVERFLOW",
-    "FE_TONEAREST",
-    "FE_TOWARDZERO",
-    "FE_UNDERFLOW",
-    "FE_UPWARD",
-    "FP_INFINITE",
-    "FP_INT_DOWNWARD",
-    "FP_INT_TONEAREST",
-    "FP_INT_TONEARESTFROMZERO",
-    "FP_INT_TOWARDZERO",
-    "FP_INT_UPWARD",
-    "FP_NAN",
-    "FP_NORMAL",
-    "FP_SUBNORMAL",
-    "FP_ZERO",
-    "IPPORT_RESERVED",
-];
+use regex::Regex;
 
 const DERIVE_COPY_NAMES: [&str; 1] = ["enum_field_types"];
 
@@ -48,139 +24,133 @@ fn main() {
     // Tell cargo to invalidate the built crate whenever the wrapper changes
     println!("cargo:rerun-if-changed=src/wrapper.h");
 
-
-    let cmake_paths = include_paths_from_cmake().or(&[mariadb_root()]);
+    make_bindings();
+    // let cmake_paths = include_paths_from_cmake().or(&[mariadb_root()]);
     // let bindings = make_bindings_with_includes(&cmake_paths)
     //     .or_else(|_| make_bindings_with_includes(&[mariadb_root()]))
     //     .or_else(|_| make_bindings_with_includes(&configure_returning_incl_paths()))
     //     .unwrap_or_else(|e| panic!("Unable to generate bindings: {e}"));
 
-
-    specify_link();
+    configure_linkage();
 }
 
 fn make_bindings() {
     // Write the bindings to the $OUT_DIR/bindings.rs file.
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let finalize_bindings = |bindings| bindings.
-        .write_to_file(out_path.join("bindings.rs"))
-        .expect("couldn't write bindings");
-    let try_bindings = |bindings| {
-        bindings
-        .write_to_file(out_path.join("bindings.rs"))
-        .expect("couldn't write bindings");
 
-        // TODO: make cpp thing
-        return;
-    };
-    
-    let mut incl_paths = [
-        include_paths_from_cmake(),
-        Some(vec![mariadb_root()]),
-        Some(configure_returning_incl_paths()),
+    // We try each of these methods to generate paths, closures so we can call
+    // them lazily (since they may have side effects).
+    let try_make_incl_paths = [
+        || include_paths_from_cmake(),
+        || Some(vec![mariadb_root()]),
+        || Some(configure_returning_incl_paths()),
     ];
 
-    if let Some(paths) = include_paths_from_cmake() {
-        if let Some(bindings) = make_bindings_with_includes(&paths) {
-            finalize_bindings(bindings);
-            // TODO: make cpp thing
-            return;
-        }
+    let mut last_error = None;
+    let mut success = false;
+
+    #[derive(Debug)]
+    #[allow(dead_code)]
+    struct LoggedError {
+        location: &'static str,
+        e: Error,
+        loop_count: usize,
+        paths: Vec<PathBuf>,
     }
 
-    if let Some(bindings) = make_bindings_with_includes(&[mariadb_root()]) {
-        
+    for (loop_count, make_pathset) in try_make_incl_paths.iter().enumerate() {
+        let Some(paths) = make_pathset() else {
+            continue;
+        };
+
+        let bindings = match make_bindings_with_includes(&paths) {
+            Ok(v) => v,
+            Err(e) => {
+                let le = LoggedError {
+                    location: "bindgen",
+                    e,
+                    loop_count,
+                    paths,
+                };
+                last_error = Some(le);
+                continue; // just move to the next source paths if we fail here
+            }
+        };
+
+        bindings
+            .write_to_file(out_path.join("bindings.rs"))
+            .expect("couldn't write bindings");
+
+        // let cxx_res = invoke_autocxx(&paths);
+        // if let Err(e) = cxx_res {
+        //     errors.push(("autocxx", loop_count, e));
+        //     break; // if cxx fails after c bindings were successful, just give up
+        // }
+
+        success = true;
     }
-    todo!()
-}
 
-#[derive(Debug)]
-struct BuildCallbacks(HashSet<String>);
-
-impl ParseCallbacks for BuildCallbacks {
-    /// Ignore macros that are in the ignored list
-    fn will_parse_macro(&self, name: &str) -> MacroParsingBehavior {
-        if self.0.contains(name) {
-            MacroParsingBehavior::Ignore
-        } else {
-            MacroParsingBehavior::Default
-        }
-    }
-
-    /// Use a converter to turn doxygen comments into rustdoc
-    fn process_comment(&self, comment: &str) -> Option<String> {
-        Some(doxygen_rs::transform(comment))
-    }
-
-    fn add_derives(&self, _info: &DeriveInfo<'_>) -> Vec<String> {
-        if DERIVE_COPY_NAMES.contains(&_info.name) {
-            vec!["Copy".to_owned()]
-        } else {
-            vec![]
-        }
-    }
-}
-
-impl BuildCallbacks {
-    fn new() -> Self {
-        Self(IGNORE_MACROS.into_iter().map(|s| s.to_owned()).collect())
+    if !success {
+        panic!("failed to generate bindings. errors: {last_error:#?}");
     }
 }
 
 /// Get the root of our mariadb project
-fn mariadb_root() -> String {
-    format!("{}/../../", env::var("CARGO_MANIFEST_DIR").unwrap())
+fn mariadb_root() -> PathBuf {
+    PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .to_owned()
 }
 
 /// Find paths provided by CMake environment variables
-fn include_paths_from_cmake() -> Option<Vec<String>> {
+fn include_paths_from_cmake() -> Option<Vec<PathBuf>> {
+    eprintln!("checking for cmake paths");
+
     if let Ok(src_dir) = env::var("CMAKE_SOURCE_DIR") {
         let Ok(dst_dir) = env::var("CMAKE_BINARY_DIR") else {
             panic!("CMAKE_SOURCE_DIR set but CMAKE_BINARY_DIR unset");
         };
-        Some(vec![src_dir, dst_dir])
+        Some(vec![PathBuf::from(src_dir), PathBuf::from(dst_dir)])
     } else {
         None
     }
 }
 
 /// Run cmake in our temp directory
-fn configure_returning_incl_paths() -> Vec<String> {
+fn configure_returning_incl_paths() -> Vec<PathBuf> {
+    eprintln!("configuring via cmake");
+
     let root = mariadb_root();
-    let output_dir = format!("{}/cmake", env::var("OUT_DIR").unwrap());
+    let output_dir = PathBuf::from(env::var("OUT_DIR").unwrap()).join("cmake");
 
     // Run cmake to configure only
     Command::new("cmake")
-        .arg(format!("-S{root}"))
-        .arg(format!("-B{output_dir}"))
+        .arg(format!("-S{}", root.display()))
+        .arg(format!("-B{}", output_dir.display()))
         .output()
         .expect("failed to invoke cmake");
 
-    vec![root, output_dir]
+    vec![output_dir, root]
 }
 
 /// Given some include directories, see if bindgen works
-fn make_bindings_with_includes(search_paths: &[String]) -> Result<Bindings, Error> {
+fn make_bindings_with_includes(search_paths: &[PathBuf]) -> Result<Bindings, Error> {
     let incl_args: Vec<_> = search_paths
         .iter()
-        .flat_map(|path| [format!("-I{path}/sql"), format!("-I{path}/include")])
+        .flat_map(|path| [path.join("sql"), path.join("include")])
+        .map(|path| format!("-I{}", path.display()))
         .collect();
 
-    let bindings = invoke_bindgen(&incl_args)?;
-    invoke_autocxx(search_paths)?;
-
-    Ok(bindings)
-}
-
-/// Create bindings to all C structs via bindgen
-fn invoke_bindgen(include_args: &[String]) -> Result<Bindings, Error> {
     bindgen::Builder::default()
         // The input header we would like to generate
         // bindings for.
         .header("src/wrapper.h")
         // Fix math.h double defines
-        .parse_callbacks(Box::new(BuildCallbacks::new()))
-        .clang_args(include_args)
+        .parse_callbacks(Box::new(BuildCallbacks))
+        .clang_args(incl_args)
         .clang_arg("-xc++")
         .clang_arg("-std=c++17")
         // Don't derive copy for structs
@@ -189,26 +159,31 @@ fn invoke_bindgen(include_args: &[String]) -> Result<Bindings, Error> {
         .default_enum_style(EnumVariation::Rust {
             non_exhaustive: true,
         })
-        // LLVM has some issues with long dobule and ABI compatibility
-        // disabling the only relevant function here to suppress errors
-        .blocklist_function("strfroml")
-        .blocklist_function("strfromf64x")
-        .blocklist_function("strtof64x_l")
-        .blocklist_function("strtof64x")
-        .blocklist_function("strtold")
-        .blocklist_function("strtold_l")
-        // qvct, evct, qfcvt_r, ...
-        .blocklist_function("[a-z]{1,2}cvt(?:_r)?")
-        // c++ things that aren't supported
-        .blocklist_item("List_iterator")
-        .blocklist_type("std::char_traits")
-        .opaque_type("std_.*")
-        .blocklist_item("std_basic_string")
-        .blocklist_item("std_collate.*")
-        .blocklist_item("__gnu_cxx.*")
-        // We redefine this to use the variables from `st_service_ref` since they don't seem to
-        // import with the expected values (a static vs. dynamic thing)
-        .blocklist_item("sql_service")
+        // We allow only specific types to avoid generating too many unneeded bindings
+        //
+        // Bindings for all plugins
+        .allowlist_item(".*PLUGIN.*")
+        .allowlist_item(".*INTERFACE_VERSION.*")
+        .allowlist_item("st_(maria|mysql)_plugin")
+        // Items for variables
+        .allowlist_item("mysql_var_.*")
+        .allowlist_item("TYPELIB")
+        // Items for for encryption plugins
+        .allowlist_var("MY_AES.*")
+        .allowlist_var("ENCRYPTION_.*.*")
+        .allowlist_item("PLUGIN_.*")
+        .allowlist_type("st_mariadb_encryption")
+        // Items for ft parsers
+        .allowlist_item("enum_ftparser_mode")
+        .allowlist_item("enum_field_types")
+        // Items for storage engines
+        .allowlist_item("handlerton")
+        .allowlist_item("handler")
+        // Items for the SQL service. Note that `sql_service` (from `st_service_ref`) needs to
+        // be handwritten because it doesn't seem to import with the expected values (a static vs.
+        // dynamic thing).
+        .allowlist_item("MYSQL_.*")
+        .allowlist_type("sql_service_st")
         // Finish the builder and generate the bindings.
         .generate()
         .map_err(Into::into)
@@ -223,7 +198,7 @@ fn invoke_autocxx(include_paths: &[String]) -> Result<(), Error> {
 }
 
 /// Tell cargo how to find libmysqlclient.so
-fn specify_link() {
+fn configure_linkage() {
     // FIXME: this is a bit sloppy
     // println!("cargo:rustc-link-lib=dylib=mariadbclient");
     // println!("cargo:rustc-link-lib=static=mysqlservices");
@@ -235,4 +210,43 @@ fn specify_link() {
     // println!("cargo:rustc-link-lib=static=libmysqlservices");
 
     // println!("cargo:rustc-link-lib=static=mysqlservices");
+}
+
+#[derive(Debug)]
+struct BuildCallbacks;
+
+impl ParseCallbacks for BuildCallbacks {
+    /// Simple converter to turn doxygen comments into rustdoc
+    fn process_comment(&self, comment: &str) -> Option<String> {
+        let brief_re = Regex::new(r"[\\@]brief ?(.*)").unwrap();
+        let param_re = Regex::new(r"[\\@]param(\[(\S+)\])? (\S+)").unwrap();
+        let retval_re = Regex::new(r"[\\@]retval (\S+)").unwrap();
+        let brackets_re = Regex::new(r"\[(.*)\]").unwrap();
+        let url_re = Regex::new(
+            r"(?x)
+            https?://                            # scheme
+            ([-a-zA-Z0-9@:%._\+~\#=]{2,256}\.)+  # subdomain
+            [a-zA-Z]{2,63}                       # TLD
+            \b([-a-zA-Z0-9@:%_\+.~\#?&/=]*)      # query parameters
+        ",
+        )
+        .unwrap();
+
+        // Add `<...>` brackets to URLs
+        let comment = url_re.replace_all(comment, "<$0>");
+        let comment = brief_re.replace_all(&comment, "$1\n");
+        let comment = param_re.replace_all(&comment, "\n* `$3` ($2)");
+        let comment = retval_re.replace_all(&comment, "\n**Returns**: $1");
+        let comment = brackets_re.replace_all(&comment, r"\[$1\]");
+
+        Some(comment.to_string())
+    }
+
+    fn add_derives(&self, _info: &DeriveInfo<'_>) -> Vec<String> {
+        if DERIVE_COPY_NAMES.contains(&_info.name) {
+            vec!["Copy".to_owned()]
+        } else {
+            vec![]
+        }
+    }
 }
