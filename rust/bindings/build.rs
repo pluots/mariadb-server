@@ -179,6 +179,7 @@ fn make_bindings_with_includes(search_paths: &[PathBuf]) -> Result<Bindings, Err
         // Items for storage engines
         .allowlist_item("handlerton")
         .allowlist_item("handler")
+        .allowlist_type("TABLE(_SHARE)?")
         // Items for the SQL service. Note that `sql_service` (from `st_service_ref`) needs to
         // be handwritten because it doesn't seem to import with the expected values (a static vs.
         // dynamic thing).
