@@ -14,7 +14,7 @@ use std::{fmt, mem, slice, str};
 use log::{debug, error, trace};
 
 pub use self::error::ClientError;
-use crate::helpers::UnsafeSyncCell;
+use crate::util::UnsafeSyncCell;
 use crate::{bindings, Value};
 
 /// Type wrapper for `Result` with a `ClientError` error variant

@@ -18,9 +18,9 @@
 use std::io::Write;
 
 mod common;
-mod helpers;
 pub mod plugin;
 pub mod service_sql;
+pub mod storage;
 mod util;
 
 #[doc(inline)]
@@ -33,7 +33,7 @@ pub use mariadb_sys as bindings;
 pub mod internals {
     pub use cstr::cstr;
 
-    pub use super::helpers::UnsafeSyncCell;
+    pub use super::util::{parse_version_str, UnsafeSyncCell};
 }
 
 /// Just a more intuitive type alias for a pass/fail `Result` with no contents.

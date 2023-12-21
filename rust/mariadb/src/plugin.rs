@@ -73,6 +73,8 @@ use mariadb_sys as bindings;
 pub mod encryption;
 mod encryption_wrapper;
 pub mod ftparser;
+pub mod storage;
+mod storage_wrapper;
 mod variables;
 mod variables_parse;
 mod wrapper;

@@ -25,12 +25,6 @@ fn main() {
     println!("cargo:rerun-if-changed=src/wrapper.h");
 
     make_bindings();
-    // let cmake_paths = include_paths_from_cmake().or(&[mariadb_root()]);
-    // let bindings = make_bindings_with_includes(&cmake_paths)
-    //     .or_else(|_| make_bindings_with_includes(&[mariadb_root()]))
-    //     .or_else(|_| make_bindings_with_includes(&configure_returning_incl_paths()))
-    //     .unwrap_or_else(|e| panic!("Unable to generate bindings: {e}"));
-
     configure_linkage();
 }
 
@@ -81,13 +75,10 @@ fn make_bindings() {
             .write_to_file(out_path.join("bindings.rs"))
             .expect("couldn't write bindings");
 
-        // let cxx_res = invoke_autocxx(&paths);
-        // if let Err(e) = cxx_res {
-        //     errors.push(("autocxx", loop_count, e));
-        //     break; // if cxx fails after c bindings were successful, just give up
-        // }
-
         success = true;
+        for path in paths {
+            // println!("cargo:rerun-if-changed={}", );
+        }
     }
 
     if !success {
@@ -148,6 +139,7 @@ fn make_bindings_with_includes(search_paths: &[PathBuf]) -> Result<Bindings, Err
         // The input header we would like to generate
         // bindings for.
         .header("src/wrapper.h")
+        .header("src/handler_helper.h")
         // Fix math.h double defines
         .parse_callbacks(Box::new(BuildCallbacks))
         .clang_args(incl_args)
@@ -155,10 +147,16 @@ fn make_bindings_with_includes(search_paths: &[PathBuf]) -> Result<Bindings, Err
         .clang_arg("-std=c++17")
         // Don't derive copy for structs
         .derive_copy(false)
+        // Use `core::ffi` instead of `std::os::raw`
+        .use_core()
+        // Will be required in a future version of `rustc`
+        .wrap_unsafe_ops(true)
         // Use rust-style enums labeled with non_exhaustive to represent C enums
         .default_enum_style(EnumVariation::Rust {
             non_exhaustive: true,
         })
+        // The cpp classes need vtables
+        .vtable_generation(true)
         // We allow only specific types to avoid generating too many unneeded bindings
         //
         // Bindings for all plugins
@@ -179,7 +177,9 @@ fn make_bindings_with_includes(search_paths: &[PathBuf]) -> Result<Bindings, Err
         // Items for storage engines
         .allowlist_item("handlerton")
         .allowlist_item("handler")
+        .allowlist_item("st_mysql_storage.*")
         .allowlist_type("TABLE(_SHARE)?")
+        .allowlist_type("MYSQL_HANDLERTON.*")
         // Items for the SQL service. Note that `sql_service` (from `st_service_ref`) needs to
         // be handwritten because it doesn't seem to import with the expected values (a static vs.
         // dynamic thing).
@@ -188,14 +188,6 @@ fn make_bindings_with_includes(search_paths: &[PathBuf]) -> Result<Bindings, Err
         // Finish the builder and generate the bindings.
         .generate()
         .map_err(Into::into)
-}
-
-/// Use autocxx for more complex C++ classes
-fn invoke_autocxx(include_paths: &[String]) -> Result<(), Error> {
-    let mut b = autocxx_build::Builder::new("src/cpp_classes.rs", include_paths).build()?;
-    // This assumes all your C++ bindings are in main.rs
-    b.flag_if_supported("-std=c++17").compile("autocxx-demo");
-    Ok(())
 }
 
 /// Tell cargo how to find libmysqlclient.so
@@ -223,6 +215,7 @@ impl ParseCallbacks for BuildCallbacks {
         let param_re = Regex::new(r"[\\@]param(\[(\S+)\])? (\S+)").unwrap();
         let retval_re = Regex::new(r"[\\@]retval (\S+)").unwrap();
         let brackets_re = Regex::new(r"\[(.*)\]").unwrap();
+        let doxy_pos_re = Regex::new(r"^< ?(.*)").unwrap();
         let url_re = Regex::new(
             r"(?x)
             https?://                            # scheme
@@ -239,6 +232,7 @@ impl ParseCallbacks for BuildCallbacks {
         let comment = param_re.replace_all(&comment, "\n* `$3` ($2)");
         let comment = retval_re.replace_all(&comment, "\n**Returns**: $1");
         let comment = brackets_re.replace_all(&comment, r"\[$1\]");
+        let comment = doxy_pos_re.replace_all(&comment, "$1");
 
         Some(comment.to_string())
     }
@@ -248,6 +242,14 @@ impl ParseCallbacks for BuildCallbacks {
             vec!["Copy".to_owned()]
         } else {
             vec![]
+        }
+    }
+
+    fn int_macro(&self, name: &str, _value: i64) -> Option<bindgen::callbacks::IntKind> {
+        if name == "MARIA_PLUGIN_INTERFACE_VERSION" {
+            Some(bindgen::callbacks::IntKind::Int)
+        } else {
+            None
         }
     }
 }
