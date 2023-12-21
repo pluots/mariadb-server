@@ -311,7 +311,7 @@ class Load_log_processor
       /* If we have to try more than 1000 times, something is seriously wrong */
       for (uint version= 0; version<1000; version++)
       {
-	sprintf(file_name_end,"-%x",version);
+	snprintf(file_name_end,5,"-%x",version);
 	if ((res= my_create(filename,0,
 			    O_CREAT|O_EXCL|O_BINARY|O_WRONLY,MYF(0)))!=-1)
 	  return res;
@@ -418,7 +418,7 @@ Exit_status Load_log_processor::process_first_event(const char *bname,
 {
   size_t full_len= target_dir_name_len + blen + 9 + 9 + 1;
   Exit_status retval= OK_CONTINUE;
-  char *fname, *ptr;
+  char *fname, *ptr, *fname_end;
   File file;
   File_name_record rec;
   DBUG_ENTER("Load_log_processor::process_first_event");
@@ -428,12 +428,13 @@ Exit_status Load_log_processor::process_first_event(const char *bname,
     error("Out of memory.");
     DBUG_RETURN(ERROR_STOP);
   }
+  fname_end= fname + full_len;
 
   memcpy(fname, target_dir_name, target_dir_name_len);
   ptr= fname + target_dir_name_len;
   memcpy(ptr,bname,blen);
   ptr+= blen;
-  ptr+= sprintf(ptr, "-%x", file_id);
+  ptr+= snprintf(ptr, fname_end-ptr, "-%x", file_id);
 
   if ((file= create_unique_file(fname,ptr)) < 0)
   {
@@ -1194,6 +1195,7 @@ Exit_status process_event(PRINT_EVENT_INFO *print_event_info, Log_event *ev,
           MYSQL_ROW row;
           char tmp_sql[8096];
           int  tmp_sql_offset;
+          size_t tmp_sql_len = sizeof(tmp_sql);
 
           conn = mysql_init(NULL);
           if (!mysql_real_connect(conn, host, user, opt_password,
@@ -1209,8 +1211,8 @@ Exit_status process_event(PRINT_EVENT_INFO *print_event_info, Log_event *ev,
             exit(1);
           }
 
-          memset(tmp_sql, 0, sizeof(tmp_sql));
-          sprintf(tmp_sql, " "
+          memset(tmp_sql, 0, tmp_sql_len);
+          snprintf(tmp_sql, tmp_sql_len,  " "
                   "SELECT Group_concat(cols) "
                   "FROM   (SELECT 'op_type char(1)' cols "
                   "  UNION ALL "
@@ -1256,13 +1258,14 @@ Exit_status process_event(PRINT_EVENT_INFO *print_event_info, Log_event *ev,
             }
             else
             {
-              memset(tmp_sql, 0, sizeof(tmp_sql));
-              sprintf(tmp_sql, "__%s", map->get_table_name());
+              memset(tmp_sql, 0, tmp_sql_len);
+              snprintf(tmp_sql, tmp_sql_len, "__%s", map->get_table_name());
               ev->set_flashback_review_tablename(tmp_sql);
             }
-            memset(tmp_sql, 0, sizeof(tmp_sql));
-            tmp_sql_offset= sprintf(tmp_sql, "CREATE TABLE IF NOT EXISTS");
-            tmp_sql_offset+= sprintf(tmp_sql + tmp_sql_offset, " `%s`.`%s` (%s) %s",
+            memset(tmp_sql, 0, tmp_sql_len);
+            tmp_sql_offset= snprintf(tmp_sql, tmp_sql_len, "CREATE TABLE IF NOT EXISTS");
+            tmp_sql_offset+= snprintf(tmp_sql + tmp_sql_offset, tmp_sql_len - tmp_sql_offset,
+                                     " `%s`.`%s` (%s) %s",
                                      ev->get_flashback_review_dbname(),
                                      ev->get_flashback_review_tablename(),
                                      row[0],
@@ -1286,7 +1289,7 @@ Exit_status process_event(PRINT_EVENT_INFO *print_event_info, Log_event *ev,
           else
           {
             memset(tmp_str, 0, sizeof(tmp_str));
-            sprintf(tmp_str, "__%s", map->get_table_name());
+            snprintf(tmp_str, sizeof(tmp_str), "__%s", map->get_table_name());
             ev->set_flashback_review_tablename(tmp_str);
           }
         }
@@ -2513,10 +2516,11 @@ static Exit_status check_master_version()
 
     for (size_t gtid_idx = 0; gtid_idx < n_start_gtids; gtid_idx++)
     {
-      char buf[256];
+      const size_t buf_len = 256;
+      char buf[buf_len];
       rpl_gtid *start_gtid= &start_gtids[gtid_idx];
 
-      sprintf(buf, "%u-%u-%llu",
+      snprintf(buf, buf_len, "%u-%u-%llu",
               start_gtid->domain_id, start_gtid->server_id,
               start_gtid->seq_no);
       query_str.append(buf, strlen(buf));
