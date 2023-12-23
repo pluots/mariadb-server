@@ -3,6 +3,7 @@
 // #include <sql_plugin.h>
 #include <my_global.h>
 #include <handler.h>
+#include <handler_bridge.h>
 #include <mysql.h>
 #include <mysql/plugin.h>
 #include <mysql/plugin_encryption.h>

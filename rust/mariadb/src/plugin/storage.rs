@@ -36,8 +36,8 @@ macro_rules! register_plugin_storage {
                     author: $crate::internals::cstr!($author).as_ptr(),
                     descr: $crate::internals::cstr!($description).as_ptr(),
                     license: $license.to_license_registration(),
-                    init: None,
-                    deinit: None,
+                    init: Some($crate::plugin::internals::wrap_storage_init_fn::<$hton>),
+                    deinit: Some($crate::plugin::internals::wrap_storage_deinit_fn::<$hton>),
                     version: $crate::internals::parse_version_str($version),
                     status_vars: ::std::ptr::null_mut(),
                     system_vars: ::std::ptr::null_mut(),
@@ -49,5 +49,17 @@ macro_rules! register_plugin_storage {
                 ),
             ]
         };
+
+        impl $crate::plugin::internals::PluginMeta for $hton {
+            const NAME: &'static str = $name;
+        }
+
+        impl $crate::plugin::internals::HandlertonMeta for $hton {
+            fn get_vtable() -> &'static $crate::bindings::handler_bridge_vt {
+                static VTABLE: $crate::bindings::handler_bridge_vt =
+                    $crate::plugin::internals::build_handler_vtable::<$hton>();
+                &VTABLE
+            }
+        }
     };
 }

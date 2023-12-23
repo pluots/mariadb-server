@@ -2,6 +2,8 @@
 //!
 //! Most of this is for plugin use
 
+#![allow(unused)]
+
 mod handler;
 mod handlerton;
 

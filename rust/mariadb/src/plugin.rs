@@ -93,6 +93,9 @@ pub mod internals {
         wrap_crypt_ctx_finish, wrap_crypt_ctx_init, wrap_crypt_ctx_size, wrap_crypt_ctx_update,
         wrap_encrypted_length, WrapKeyMgr,
     };
+    pub use super::storage_wrapper::{
+        build_handler_vtable, wrap_storage_deinit_fn, wrap_storage_init_fn, HandlertonMeta,
+    };
     pub use super::variables::SysVarInterface;
     pub use super::wrapper::{
         default_deinit_notype, default_init_notype, new_null_plugin_st, wrap_deinit_fn,

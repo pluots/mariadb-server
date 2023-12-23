@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use mariadb::plugin::ftparser::{FullTextParser, Parameters};
 use mariadb::EmptyResult;
 

@@ -16,11 +16,11 @@ macro(CONFIGURE_RUST_PLUGINS)
   execute_process(COMMAND python3 "${rust_dir}/cmake_helper.py" OUTPUT_VARIABLE plugins)
 
   # Add common include directories
-  INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include 
-                    ${CMAKE_SOURCE_DIR}/sql
-                    ${PCRE_INCLUDES}
-                    ${SSL_INCLUDE_DIRS}
-                    ${ZLIB_INCLUDE_DIR})
+  include_directories(${CMAKE_SOURCE_DIR}/include 
+                      ${CMAKE_SOURCE_DIR}/sql
+                      ${PCRE_INCLUDES}
+                      ${SSL_INCLUDE_DIRS}
+                      ${ZLIB_INCLUDE_DIR})
 
   # find_library(servlib NAMES "services")
   # message("LIBPATH ${CMAKE_LIBRARY_PATH} FINDLIBS ${servlib}")
@@ -66,7 +66,7 @@ macro(CONFIGURE_RUST_PLUGINS)
       "How to build plugin ${cargo_name}. Options are: NO STATIC DYNAMIC YES AUTO.")
 
     if(NOT ${${cache_name}} MATCHES "^(NO|YES|AUTO|STATIC|DYNAMIC)$")
-      message(FATAL_ERROR "Invalid value t${cache_name} for ${cache_name}")
+      message(FATAL_ERROR "Invalid value ${${cache_name}} for ${cache_name}")
     endif()
 
     set(cargo_cmd 
@@ -77,7 +77,48 @@ macro(CONFIGURE_RUST_PLUGINS)
       --quiet
     )
 
-    set(rustc_extra_args -L "native=${CMAKE_CURRENT_BINARY_DIR}/libservices")
+    # FIXME: ideally we would extract this information via get_target_property or
+    # similar.
+    # A lot of this is just for the storage engines
+
+    set(rustc_extra_args "-Lnative=${CMAKE_CURRENT_BINARY_DIR}/sql")
+    set(rustc_extra_args ${rustc_extra_args} "-Lnative=${CMAKE_CURRENT_BINARY_DIR}/libservices")
+    set(rustc_extra_args ${rustc_extra_args} "-Lnative=${CMAKE_CURRENT_BINARY_DIR}/dbug")
+    set(rustc_extra_args ${rustc_extra_args} "-Lnative=${CMAKE_CURRENT_BINARY_DIR}/storage/maria")
+    set(rustc_extra_args ${rustc_extra_args} "-Lnative=${CMAKE_CURRENT_BINARY_DIR}/mysys")
+    set(rustc_extra_args ${rustc_extra_args} "-Lnative=${CMAKE_CURRENT_BINARY_DIR}/mysys_ssl")
+    set(rustc_extra_args ${rustc_extra_args} "-Lnative=${CMAKE_CURRENT_BINARY_DIR}/strings")
+    set(rustc_extra_args ${rustc_extra_args} "-Lnative=${CMAKE_CURRENT_BINARY_DIR}/partition")
+    set(rustc_extra_args ${rustc_extra_args} "-Lnative=${CMAKE_CURRENT_BINARY_DIR}/storage/perfschema")
+    set(rustc_extra_args ${rustc_extra_args} "-Lnative=${CMAKE_CURRENT_BINARY_DIR}/storage/myisam")
+    set(rustc_extra_args ${rustc_extra_args} "-Lnative=${CMAKE_CURRENT_BINARY_DIR}/storage/innobase")
+    set(rustc_extra_args ${rustc_extra_args} "-Lnative=${CMAKE_CURRENT_BINARY_DIR}/vio")
+    set(rustc_extra_args ${rustc_extra_args} "-Lnative=${CMAKE_CURRENT_BINARY_DIR}/plugin/feedback")
+    set(rustc_extra_args ${rustc_extra_args} "-Lnative=${CMAKE_CURRENT_BINARY_DIR}/tpool")
+    set(rustc_extra_args ${rustc_extra_args} "-Lnative=${CMAKE_CURRENT_BINARY_DIR}/wsrep-lib/wsrep-API/")
+    set(rustc_extra_args ${rustc_extra_args} "-Lnative=${CMAKE_CURRENT_BINARY_DIR}/wsrep-lib/src/")
+    set(rustc_extra_args ${rustc_extra_args} "-lstatic=sql")
+    set(rustc_extra_args ${rustc_extra_args} "-lstatic=dbug")
+    set(rustc_extra_args ${rustc_extra_args} "-lstatic=aria")
+    set(rustc_extra_args ${rustc_extra_args} "-lstatic=sql_sequence")
+    set(rustc_extra_args ${rustc_extra_args} "-lstatic=sql_builtins")
+    set(rustc_extra_args ${rustc_extra_args} "-lstatic=mysys")
+    set(rustc_extra_args ${rustc_extra_args} "-lstatic=mysys_ssl")
+    set(rustc_extra_args ${rustc_extra_args} "-lstatic=wsrep")
+    set(rustc_extra_args ${rustc_extra_args} "-lstatic=strings")
+    set(rustc_extra_args ${rustc_extra_args} "-lstatic=feedback")
+    # set(rustc_extra_args ${rustc_extra_args} "-lstatic=openssl")
+    set(rustc_extra_args ${rustc_extra_args} "-lstatic=pcre2-8")
+    set(rustc_extra_args ${rustc_extra_args} "-lstatic=vio")
+    set(rustc_extra_args ${rustc_extra_args} "-lstatic=myisam")
+    set(rustc_extra_args ${rustc_extra_args} "-lstatic=innobase")
+    set(rustc_extra_args ${rustc_extra_args} "-lstatic=perfschema")
+    set(rustc_extra_args ${rustc_extra_args} "-lstatic=tpool")
+    set(rustc_extra_args ${rustc_extra_args} "-lstatic=wsrep_api_v26")
+    set(rustc_extra_args ${rustc_extra_args} "-lstatic=wsrep-lib")
+    set(rustc_extra_args ${rustc_extra_args} "-lstatic=partition")
+    set(rustc_extra_args ${rustc_extra_args} "-lc++")
+
 
     # Configure debug/release options
     if(CMAKE_BUILD_TYPE MATCHES "Debug")
@@ -93,10 +134,11 @@ macro(CONFIGURE_RUST_PLUGINS)
     endif()
 
     set(dylib_path "${output_path}/${dylib_name_out}")
-
+  
     # Used by build.rs
-    set(env_args -E env CMAKE_SOURCE_DIR=${CMAKE_SOURCE_DIR}
-        CMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
+    set(env_args -E env
+        CMAKE_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+        CMAKE_BINARY_DIR="${CMAKE_BINARY_DIR}"
     )
 
     if(NOT ARG_MODULE_OUTPUT_NAME)
@@ -166,25 +208,26 @@ macro(CONFIGURE_RUST_PLUGINS)
       # elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT WITH_ASAN AND NOT WITH_TSAN AND NOT WITH_UBSAN AND NOT WITH_MSAN)
       #   target_link_libraries(${target} "-Wl,--no-undefined")
       # endif()
-  
+
       add_custom_target(${target_name} ALL
         COMMAND ${CMAKE_COMMAND}
-          ${env_args}
-          ${cargo_cmd}
-          --crate-type=cdylib
-          --
-          ${rustc_extra_args}
+        ${env_args}
+        ${cargo_cmd}
+        --crate-type=cdylib
+        --
+        ${rustc_extra_args}
         WORKING_DIRECTORY ${rust_dir}
         COMMENT "start cargo for ${target_name} with '${cargo_cmd}' dynamic"
         VERBATIM
       )
 
-      add_dependencies(${target_name} mysqlservices)
+      add_dependencies(${target_name} mysqlservices
+        # Only needed for storage
+        sql mysys)
 
       # IF(CMAKE_SYSTEM_NAME MATCHES AIX)
       #   TARGET_LINK_OPTIONS(${target} PRIVATE "-Wl,-bE:${CMAKE_SOURCE_DIR}/libservices/mysqlservices_aix.def")
       # ENDIF()
-
 
       set_target_properties(${target} PROPERTIES PREFIX "")
       if(NOT ARG_CLIENT)

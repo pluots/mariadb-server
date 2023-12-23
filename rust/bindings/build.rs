@@ -25,7 +25,6 @@ fn main() {
     println!("cargo:rerun-if-changed=src/wrapper.h");
 
     make_bindings();
-    configure_linkage();
 }
 
 fn make_bindings() {
@@ -57,7 +56,12 @@ fn make_bindings() {
             continue;
         };
 
-        let bindings = match make_bindings_with_includes(&paths) {
+        let include_paths: Vec<_> = paths
+            .iter()
+            .flat_map(|path| [path.join("sql"), path.join("include")])
+            .collect();
+
+        let bindings = match make_bindings_with_includes(&include_paths) {
             Ok(v) => v,
             Err(e) => {
                 let le = LoggedError {
@@ -75,10 +79,21 @@ fn make_bindings() {
             .write_to_file(out_path.join("bindings.rs"))
             .expect("couldn't write bindings");
 
-        success = true;
-        for path in paths {
-            // println!("cargo:rerun-if-changed={}", );
+        // Tell cargo to rerun if header files change. We walkdir to find only headers
+        // because using every file was too slow.
+        for path in include_paths.iter() {
+            for header_file in walkdir::WalkDir::new(path)
+                .into_iter()
+                .filter_map(Result::ok)
+                .map(walkdir::DirEntry::into_path)
+                .filter(|p| p.extension() == Some("h".as_ref()))
+            {
+                println!("cargo:rerun-if-changed={}", header_file.display());
+            }
         }
+
+        success = true;
+        break;
     }
 
     if !success {
@@ -98,21 +113,22 @@ fn mariadb_root() -> PathBuf {
 
 /// Find paths provided by CMake environment variables
 fn include_paths_from_cmake() -> Option<Vec<PathBuf>> {
-    eprintln!("checking for cmake paths");
-
     if let Ok(src_dir) = env::var("CMAKE_SOURCE_DIR") {
         let Ok(dst_dir) = env::var("CMAKE_BINARY_DIR") else {
             panic!("CMAKE_SOURCE_DIR set but CMAKE_BINARY_DIR unset");
         };
+        eprintln!("using paths from cmake");
+
         Some(vec![PathBuf::from(src_dir), PathBuf::from(dst_dir)])
     } else {
+        eprintln!("cmake environment not set, skipping");
         None
     }
 }
 
 /// Run cmake in our temp directory
 fn configure_returning_incl_paths() -> Vec<PathBuf> {
-    eprintln!("configuring via cmake");
+    eprintln!("no preconfigured source found, running cmake configure");
 
     let root = mariadb_root();
     let output_dir = PathBuf::from(env::var("OUT_DIR").unwrap()).join("cmake");
@@ -128,10 +144,9 @@ fn configure_returning_incl_paths() -> Vec<PathBuf> {
 }
 
 /// Given some include directories, see if bindgen works
-fn make_bindings_with_includes(search_paths: &[PathBuf]) -> Result<Bindings, Error> {
-    let incl_args: Vec<_> = search_paths
+fn make_bindings_with_includes(include_paths: &[PathBuf]) -> Result<Bindings, Error> {
+    let incl_args: Vec<_> = include_paths
         .iter()
-        .flat_map(|path| [path.join("sql"), path.join("include")])
         .map(|path| format!("-I{}", path.display()))
         .collect();
 
@@ -152,9 +167,7 @@ fn make_bindings_with_includes(search_paths: &[PathBuf]) -> Result<Bindings, Err
         // Will be required in a future version of `rustc`
         .wrap_unsafe_ops(true)
         // Use rust-style enums labeled with non_exhaustive to represent C enums
-        .default_enum_style(EnumVariation::Rust {
-            non_exhaustive: true,
-        })
+        .default_enum_style(EnumVariation::ModuleConsts)
         // The cpp classes need vtables
         .vtable_generation(true)
         // We allow only specific types to avoid generating too many unneeded bindings
@@ -177,6 +190,8 @@ fn make_bindings_with_includes(search_paths: &[PathBuf]) -> Result<Bindings, Err
         // Items for storage engines
         .allowlist_item("handlerton")
         .allowlist_item("handler")
+        .allowlist_item("handler_bridge")
+        .allowlist_function("ha_construct_bridge")
         .allowlist_item("st_mysql_storage.*")
         .allowlist_type("TABLE(_SHARE)?")
         .allowlist_type("MYSQL_HANDLERTON.*")
@@ -190,20 +205,25 @@ fn make_bindings_with_includes(search_paths: &[PathBuf]) -> Result<Bindings, Err
         .map_err(Into::into)
 }
 
-/// Tell cargo how to find libmysqlclient.so
-fn configure_linkage() {
-    // FIXME: this is a bit sloppy
-    // println!("cargo:rustc-link-lib=dylib=mariadbclient");
-    // println!("cargo:rustc-link-lib=static=mysqlservices");
+// /// Tell cargo how to find needed libraries
+// fn configure_linkage() {
+//     // Set up link libraries and directories as provided by cmake
+//     if let Ok(cmake_link_libs) = env::var("CMAKE_LINK_LIBRARIES") {
+//         eprintln!("link libs: {cmake_link_libs}");
+//         for lib in cmake_link_libs.split(';') {
+//             // Remove the extension
+//             let libname = lib.split_once('.').map_or(lib, |x| x.0);
+//             println!("cargo:rustc-link-lib=static={libname}");
+//         }
+//     }
 
-    // // todo: change to cmake_link_dirs, split by `;`
-    // if let Ok(cmake_dir) = env::var("CMAKE_BINARY_DIR") {
-    //     println!("cargo:rustc-link-search=native={cmake_dir}/libservices");
-    // }
-    // println!("cargo:rustc-link-lib=static=libmysqlservices");
-
-    // println!("cargo:rustc-link-lib=static=mysqlservices");
-}
+//     if let Ok(cmake_link_dirs) = env::var("CMAKE_LINK_DIRECTORIES") {
+//         eprintln!("link dirs: {cmake_link_dirs}");
+//         for dir in cmake_link_dirs.split(';') {
+//             println!("cargo:rustc-link-search=native={dir}");
+//         }
+//     }
+// }
 
 #[derive(Debug)]
 struct BuildCallbacks;

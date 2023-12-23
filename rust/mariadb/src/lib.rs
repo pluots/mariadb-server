@@ -18,9 +18,12 @@
 use std::io::Write;
 
 mod common;
+mod my_alloc;
 pub mod plugin;
 pub mod service_sql;
 pub mod storage;
+mod table;
+mod thd;
 mod util;
 
 #[doc(inline)]
@@ -28,6 +31,9 @@ pub use common::*;
 pub use log;
 #[doc(hidden)]
 pub use mariadb_sys as bindings;
+pub use my_alloc::MemRoot;
+pub use table::Table;
+pub use thd::Thd;
 
 #[doc(hidden)]
 pub mod internals {

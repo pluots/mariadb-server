@@ -29,7 +29,7 @@ impl<'a> Value<'a> {
     /// Don't ask me why but our responses from the server API seem to all be strings
     /// So: take a pointer to the string then parse it as whatever value we expect
     pub(crate) unsafe fn from_str_ptr(
-        ty: bindings::enum_field_types,
+        ty: bindings::enum_field_types::Type,
         ptr: *const c_char,
         len: usize,
     ) -> Self {

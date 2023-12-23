@@ -443,7 +443,7 @@ impl FieldMeta<'_> {
         str::from_utf8(name_slice).expect("non-utf8 identifier")
     }
 
-    fn ftype(&self) -> bindings::enum_field_types {
+    fn ftype(&self) -> bindings::enum_field_types::Type {
         self.inner.type_
     }
 }
