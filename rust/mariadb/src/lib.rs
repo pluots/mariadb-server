@@ -17,17 +17,21 @@
 
 use std::io::Write;
 
-mod common;
+#[cfg(feature = "service-sql")]
+mod value;
 mod my_alloc;
 pub mod plugin;
+#[cfg(feature = "service-sql")]
 pub mod service_sql;
+#[cfg(feature = "storage")]
 pub mod storage;
 mod table;
 mod thd;
 mod util;
 
+#[cfg(feature = "service-sql")]
 #[doc(inline)]
-pub use common::*;
+pub use value::*;
 pub use log;
 #[doc(hidden)]
 pub use mariadb_sys as bindings;

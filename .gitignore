@@ -628,4 +628,5 @@ versioninfo_exe.rc
 win/packaging/ca/symlinks.cc
 
 # rust output
-rust/target
+target/
+rust_target

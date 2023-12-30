@@ -4,13 +4,8 @@ version = "0.1.0"
 edition = '2021'
 license = "GPL-2.0-only"
 
-
 [build-dependencies]
-autocxx-build = "0.26.0"
 bindgen = "0.69.1"
 cmake = "0.1.50"
 regex = "1.10.2"
 walkdir = "2.4.0"
-
-[dependencies]
-autocxx = "0.26.0"

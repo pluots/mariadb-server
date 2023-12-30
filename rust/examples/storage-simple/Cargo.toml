@@ -8,4 +8,4 @@ license = "GPL-2.0-only"
 crate-type = ["cdylib"]
 
 [dependencies]
-mariadb = { path = "../../mariadb" }
+mariadb = { path = "../../mariadb", features = ["storage"] }

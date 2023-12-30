@@ -5,12 +5,10 @@
 
 ##### General configuration #####
 
-set(rust_dir "${CMAKE_SOURCE_DIR}/rust")
-set(cargo_target_dir "${CMAKE_CURRENT_BINARY_DIR}/rust_target")
+set(rust_dir "${CMAKE_CURRENT_SOURCE_DIR}")
+set(cargo_target_dir "${CMAKE_BINARY_DIR}/rust_target")
 message(STATUS "rust dir ${rust_dir}")
-message(STATUS "OPENSSL ${OPENSSL_INCLUDE_DIR}")
-message(STATUS "OPENSSL ${OPENSSL_SSL_LIBRARY}")
-message(STATUS "OPENSSL ${OPENSSL_CRYPTO_LIBRARY}")
+message(STATUS "cargo target ${cargo_target_dir}")
 
 
 ##### Configure bridge libraries #####
@@ -23,12 +21,15 @@ message(STATUS "OPENSSL ${OPENSSL_CRYPTO_LIBRARY}")
 add_definitions(-DMYSQL_SERVER=1)
 
 # Add common include directories
-include_directories(../include 
-                    ../sql
-                    ../libmariadb/include
-                    ${PCRE_INCLUDES}
-                    ${SSL_INCLUDE_DIRS}
-                    ${ZLIB_INCLUDE_DIR})
+include_directories(
+  ../include 
+  ../sql
+  ../libmariadb/include
+  bridge
+  ${PCRE_INCLUDES}
+  ${SSL_INCLUDE_DIRS}
+  ${ZLIB_INCLUDE_DIR}
+)
             
 # Bridge library for storage engine pluigns
 add_convenience_library(rust_bridge_storage
@@ -41,13 +42,35 @@ set_target_properties(
   LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/rust/bridge
 )
 
-target_include_directories(
-  rust_bridge_storage PUBLIC
-  ${CMAKE_SOURCE_DIR}/rust_target/bridge
-)
+# target_include_directories(
+#   rust_bridge_storage PUBLIC
+#   ${CMAKE_SOURCE_DIR}/rust/bridge
+# )
 
-# add_executable(rustbar m.cc)
-# set_target_properties(rustbar PROPERTIES C_COMPILER_LAUNCHER odjsoifj)
+# # Dummy target used to aggregate linker args. I can't get target_link_libraries
+# # to work for some reason.
+# # add_executable(rustbar bridge/m.cc)
+# add_library(test_dummy_target SHARED bridge/handler_bridge.cc)
+# # target_link_libraries(test_dummy_target rust_bridge_storage)
+# target_include_directories(
+#   test_dummy_target PUBLIC
+#   ../include 
+#   ../sql
+#   ../libmariadb/include
+#   bridge
+#   ${PCRE_INCLUDES}
+#   ${SSL_INCLUDE_DIRS}
+#   ${ZLIB_INCLUDE_DIR}
+# )
+# if(MSVC OR CMAKE_SYSTEM_NAME MATCHES AIX)
+#   target_link_libraries(test_dummy_target server)
+# elseif(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+#   target_link_libraries(test_dummy_target mariadbd)
+# endif()
+# set_target_properties(test_dummy_target PROPERTIES C_COMPILER_LAUNCHER "${CMAKE_SOURCE_DIR}/rust/test.py;c")
+# set_target_properties(test_dummy_target PROPERTIES CXX_COMPILER_LAUNCHER "${CMAKE_SOURCE_DIR}/rust/test.py;cxx")
+# set_target_properties(test_dummy_target PROPERTIES C_LINKER_LAUNCHER "${CMAKE_SOURCE_DIR}/rust/test.py;ld")
+# set_target_properties(test_dummy_target PROPERTIES CXX_LINKER_LAUNCHER "${CMAKE_SOURCE_DIR}/rust/test.py;ld")
 
 set(rustc_args ${rustc_args} "-Lnative=${CMAKE_CURRENT_BINARY_DIR}/sql")
 
@@ -96,26 +119,46 @@ set(rustc_args_storage ${rustc_args_storage} "-Clink-arg=${OPENSSL_SSL_LIBRARY}"
 set(rustc_args_storage ${rustc_args_storage} "-Clink-arg=${OPENSSL_CRYPTO_LIBRARY}")
 
 
-
 ##### Configure Rust plugins #####
 
 # TODO: just parse any needed configuration from cargo.toml
 
 # There are some things that are just easier to not do in CMake 
-execute_process(COMMAND python3 "${rust_dir}/cmake_helper.py" OUTPUT_VARIABLE plugin_config)
-message(STATUS PLUGIN STRING ${plugin_config})
+execute_process(
+  COMMAND python3 "${rust_dir}/cmake-helper.py"
+  OUTPUT_VARIABLE helper_output
+  COMMAND_ERROR_IS_FATAL ANY
+)
+message(STATUS "plugin: ${helper_output}")
 
-# See cmake_helper.py for the output that we get here. We loop through each
+# Load a dictionary-like-thing in the only way cmake can
+# All set variables start with "from_helper"
+foreach(key_value_string ${helper_output})
+  # Find the key then the value
+  string(STRIP ${key_value_string} key_value_string)
+  string(REGEX MATCH "^[^=]+" key ${key_value_string})
+  string(REPLACE "${key}=" "" value ${key_value_string})
+  # We use `|` in place of `;` for values that are lists
+  string(REPLACE "|" ";" value ${value})
+  # Set the variable. I wish there were a better way to handle this...
+  set(${key} "${value}")
+endforeach()
+
+set(rust_shared_suffix ${CMAKE_SHARED_LIBRARY_SUFFIX})
+
+if(APPLE)
+  set(rust_shared_suffix ".dylib")
+endif()
+
+# See cmake-helper.py for the output that we get here. We loop through each
 # plugin
-foreach(entry IN LISTS plugin_config)
-  string(REPLACE "|" ";" entry "${entry}")
-  list(GET entry 0 cache_name)
-  list(GET entry 1 target_name)
-  list(GET entry 2 cargo_name)
-  list(GET entry 3 staticlib_name)
-  list(GET entry 4 dylib_name_out)
-  list(GET entry 5 dylib_name_final)
-  set(output_path "${cargo_target_dir}/release")
+foreach(plugin_name IN LISTS from_helper_all_plugins)
+  message(STATUS "configuring rust plugin ${plugin_name}")
+  set(cache_name ${from_helper_plugin_${plugin_name}_cache_name})
+  set(cargo_name ${from_helper_plugin_${plugin_name}_cargo_name})
+  set(target_name ${from_helper_plugin_${plugin_name}_cmake_target_name})
+  set(staticlib_name "${CMAKE_STATIC_LIBRARY_PREFIX}${plugin_name}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  set(dylib_name "${CMAKE_SHARED_LIBRARY_PREFIX}${plugin_name}${rust_shared_suffix}")
 
   # Copied from plugin.cmake, set default `howtobuild`
   if(ARG_DISABLED)
@@ -143,10 +186,10 @@ foreach(entry IN LISTS plugin_config)
   # STATIC - static if possible, otherwise not at all
   # DYNAMIC - dynamic if possible, otherwise not at all
   set(${cache_name} ${howtobuild} CACHE STRING
-    "How to build plugin ${cargo_name}. Options are: NO STATIC DYNAMIC YES AUTO.")
+    "How to build plugin ${plugin_name}. Options are: NO STATIC DYNAMIC YES AUTO.")
 
-  if(NOT ${${cache_name}} MATCHES "^(NO|YES|AUTO|STATIC|DYNAMIC)$")
-    message(FATAL_ERROR "Invalid value ${${cache_name}} for ${cache_name}")
+  if(NOT ${cache_name} MATCHES "^(NO|YES|AUTO|STATIC|DYNAMIC)$")
+    message(FATAL_ERROR "Invalid value '${${cache_name}}' for ${cache_name}")
   endif()
 
   set(cargo_cmd 
@@ -157,6 +200,8 @@ foreach(entry IN LISTS plugin_config)
     --quiet
   )
 
+  set(output_path "${cargo_target_dir}/release")
+  
   # Configure debug/release options
   if(CMAKE_BUILD_TYPE MATCHES "Debug")
     set(cargo_cmd ${cargo_cmd} --profile=dev)
@@ -170,7 +215,8 @@ foreach(entry IN LISTS plugin_config)
     set(rustc_args ${rustc_args} -C strip=debuginfo)
   endif()
 
-  set(dylib_path "${output_path}/${dylib_name_out}")
+
+  set(dylib_path "${output_path}/${dylib_name}")
 
   # Used by build.rs
   set(env_args -E env
@@ -187,10 +233,9 @@ foreach(entry IN LISTS plugin_config)
   endif()
 
   if(
-    ${${cache_name}} MATCHES "(STATIC|AUTO|YES)" AND NOT ARG_MODULE_ONLY
+    ${cache_name} MATCHES "(STATIC|AUTO|YES)" AND NOT ARG_MODULE_ONLY
     AND NOT ARG_CLIENT
   )
-  message(STATUS "configuring rust plugin ${target_name} as static")
 
     # Build a staticlib
     if(CMAKE_GENERATOR MATCHES "Makefiles|Ninja")
@@ -202,6 +247,12 @@ foreach(entry IN LISTS plugin_config)
         ${CMAKE_CURRENT_BINARY_DIR}/${ARG_MODULE_OUTPUT_NAME}${CMAKE_SHARED_MODULE_SUFFIX})
     endif()
 
+    set(rustc_args_this_plugin "")
+    
+    if(${from_helper_plugin_${plugin_name}_needs_storage})
+      message(STATUS "linking in storage module")
+      set(rustc_args_this_plugin ${rustc_args_this_plugin} ${rustc_args_storage})
+    endif()
 
     add_custom_target(${target_name}
       # We set make_static_lib to generate the correct symbols
@@ -214,32 +265,24 @@ foreach(entry IN LISTS plugin_config)
       --crate-type=staticlib
       --
       ${rustc_args}
-      # FIXME: only provide storage arguments if we are buildling a storage engine
-      ${rustc_args_storage}
+      ${rustc_args_this_plugin}
       --cfg=make_static_lib
       WORKING_DIRECTORY ${rust_dir}
       COMMENT "start cargo for ${target_name} with '${cargo_cmd}' static"
       VERBATIM
     )
 
-    # add_custom_target(${target_name} ALL
-    #   COMMAND echo "invoking cargo for ${target_name}"
-    #   DEPENDS ${staticlib_name}
-    # )
-
     # Update mysqld dependencies
-    SET (MYSQLD_STATIC_PLUGIN_LIBS ${MYSQLD_STATIC_PLUGIN_LIBS} 
+    set(MYSQLD_STATIC_PLUGIN_LIBS ${MYSQLD_STATIC_PLUGIN_LIBS} 
       ${target_name} ${ARG_LINK_LIBRARIES} CACHE INTERNAL "" FORCE)
 
     message("more to do here...")
 
   elseif(
-    ${${cache_name}} MATCHES "(DYNAMIC|AUTO|YES)"
+    ${cache_name} MATCHES "(DYNAMIC|AUTO|YES)"
     AND NOT ARG_STATIC_ONLY AND NOT WITHOUT_DYNAMIC_PLUGINS
   )
     # Build a dynamiclib
-    message(STATUS "configuring rust plugin ${target_name} as dynamic")
-
     add_version_info(${target_name} MODULE SOURCES)
 
     # if(ARG_RECOMPILE_FOR_EMBEDDED OR ARG_STORAGE_ENGINE)
@@ -266,10 +309,6 @@ foreach(entry IN LISTS plugin_config)
       VERBATIM
     )
 
-    add_dependencies(${target_name} mysqlservices
-                      # Only needed for storage
-                      rust_bridge_storage)
-
     # IF(CMAKE_SYSTEM_NAME MATCHES AIX)
     #   TARGET_LINK_OPTIONS(${target} PRIVATE "-Wl,-bE:${CMAKE_SOURCE_DIR}/libservices/mysqlservices_aix.def")
     # ENDIF()
@@ -283,7 +322,8 @@ foreach(entry IN LISTS plugin_config)
     IF (NOT ARG_CLIENT)
     SET_TARGET_PROPERTIES (${target} PROPERTIES
       COMPILE_DEFINITIONS "MYSQL_DYNAMIC_PLUGIN${version_string}")
-  ENDIF()
+  
+      endif()
 
     # add_custom_target(${target_name} ALL
     #   COMMAND echo "invoking cargo for ${target_name}"
@@ -294,13 +334,30 @@ foreach(entry IN LISTS plugin_config)
     # add_dependencies(mariadb-plugin ${target_name})
     set_target_properties(${target_name} PROPERTIES OUTPUT_NAME "${target_name}")
       # mysql_install_targets(${target_name} DESTINATION ${INSTALL_PLUGINDIR} COMPONENT ${ARG_COMPONENT})
-    install(FILES ${dylib_path} DESTINATION ${INSTALL_PLUGINDIR} RENAME ${dylib_name_final} COMPONENT ${ARG_COMPONENT})
+
+
+    if(${from_helper_plugin_${plugin_name}_is_example})
+      set(plugin_pfx "example_")
+    endif()
+
+    set(dylib_name_installed "${plugin_pfx}${plugin_name}${CMAKE_SHARED_MODULE_SUFFIX}")
+
+    install(FILES ${dylib_path} DESTINATION ${INSTALL_PLUGINDIR}
+            RENAME ${dylib_name_installed} COMPONENT ${ARG_COMPONENT})
     
     if(ARG_CONFIG AND INSTALL_SYSCONF2DIR)
       install(FILES ${ARG_CONFIG} COMPONENT ${ARG_COMPONENT} DESTINATION ${INSTALL_SYSCONF2DIR})
     endif()
   else()
     message(STATUS "skipping rust plugin ${target_name}")
+  endif()
+
+  if(${from_helper_plugin_${plugin_name}_needs_any_services})
+    add_dependencies(${target_name} mysqlservices)
+  endif()
+
+  if(${from_helper_plugin_${plugin_name}_needs_storage})
+    add_dependencies(${target_name} rust_bridge_storage)
   endif()
 
   if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/mysql-test")

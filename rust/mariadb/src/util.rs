@@ -34,6 +34,8 @@ impl<T> UnsafeSyncCell<T> {
 unsafe impl<T> Send for UnsafeSyncCell<T> {}
 unsafe impl<T> Sync for UnsafeSyncCell<T> {}
 
+/// Turn an integer into a `Result<(), ()>`. 0 is success, anything else is an error.
+#[allow(dead_code)]
 pub(crate) fn to_result(val: c_int) -> EmptyResult {
     if val == 0 {
         EmptyResult::Ok(())

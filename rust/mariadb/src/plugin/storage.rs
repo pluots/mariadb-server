@@ -10,6 +10,11 @@ macro_rules! register_plugin_storage {
         $version:literal,handlerton:
         $hton:ty $(,)?
     ) => {
+        static STORAGE_ENGINE: $crate::bindings::st_mysql_storage_engine =
+            $crate::bindings::st_mysql_storage_engine {
+                interface_version: $crate::bindings::MYSQL_HANDLERTON_INTERFACE_VERSION,
+            };
+
         #[no_mangle]
         #[cfg(not(make_static_lib))]
         #[allow(non_upper_case_globals)]
@@ -31,7 +36,7 @@ macro_rules! register_plugin_storage {
             [
                 $crate::internals::UnsafeSyncCell::new($crate::bindings::st_maria_plugin {
                     type_: $crate::plugin::PluginType::MyStorageEngine.to_ptype_registration(),
-                    info: ::std::ptr::null_mut(),
+                    info: std::ptr::addr_of!(STORAGE_ENGINE).cast_mut().cast(),
                     name: $crate::internals::cstr!($name).as_ptr(),
                     author: $crate::internals::cstr!($author).as_ptr(),
                     descr: $crate::internals::cstr!($description).as_ptr(),

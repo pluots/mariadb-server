@@ -10,5 +10,5 @@ crate-type = ["cdylib"]
 [dependencies]
 clevis = ">= 0.4.1"
 josekit = "0.8.3"
-mariadb = { path = "../../mariadb" }
+mariadb = { path = "../../mariadb", features = ["service-sql"] }
 ureq = "2.7.1"

@@ -60,7 +60,13 @@ fn make_bindings() {
         // `include/`, and `rust/bridge/`
         let include_paths: Vec<_> = paths
             .iter()
-            .flat_map(|path| [path.join("sql"), path.join("include"), path.join("rust").join("bridge")])
+            .flat_map(|path| {
+                [
+                    path.join("sql"),
+                    path.join("include"),
+                    path.join("rust").join("bridge"),
+                ]
+            })
             .collect();
 
         let bindings = match make_bindings_with_includes(&include_paths) {
@@ -268,7 +274,12 @@ impl ParseCallbacks for BuildCallbacks {
     }
 
     fn int_macro(&self, name: &str, _value: i64) -> Option<bindgen::callbacks::IntKind> {
-        if name == "MARIA_PLUGIN_INTERFACE_VERSION" {
+        let signed_vals = [
+            "MARIA_PLUGIN_INTERFACE_VERSION",
+            "MYSQL_HANDLERTON_INTERFACE_VERSION",
+        ];
+
+        if signed_vals.contains(&name) {
             Some(bindgen::callbacks::IntKind::Int)
         } else {
             None
