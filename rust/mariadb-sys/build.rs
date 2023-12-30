@@ -56,9 +56,11 @@ fn make_bindings() {
             continue;
         };
 
+        // For source and output directories, add the include paths for `sql/`,
+        // `include/`, and `rust/bridge/`
         let include_paths: Vec<_> = paths
             .iter()
-            .flat_map(|path| [path.join("sql"), path.join("include")])
+            .flat_map(|path| [path.join("sql"), path.join("include"), path.join("rust").join("bridge")])
             .collect();
 
         let bindings = match make_bindings_with_includes(&include_paths) {

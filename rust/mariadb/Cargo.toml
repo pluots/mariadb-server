@@ -6,7 +6,7 @@ license = "GPL-2.0-only"
 
 
 [dependencies]
-mariadb-sys = { path = "../bindings" }
+mariadb-sys = { path = "../mariadb-sys" }
 mariadb-macros = { path = "../macros" }
 cstr = "0.2.11"
 time = { version = "0.3.29", features = ["formatting"]}

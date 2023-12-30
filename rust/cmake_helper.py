@@ -9,14 +9,15 @@ PLUGIN_CACHE_NAME|target_name|cargo-name|staticlib_name.a|libdylib_name.so|dylib
 ```
 """
 
-import re
 import os
+import re
 
 
 def main():
-    this_path = os.path.dirname(__file__)
+    rust_path = os.path.dirname(__file__)
+    source_path = os.path.dirname(rust_path)
 
-    with open(f"{this_path}/Cargo.toml") as f:
+    with open(f"{rust_path}/../Cargo.toml") as f:
         cargo = f.read()
 
     members = re.search(r"members\s+=\s+\[(.*)\]", cargo, re.DOTALL).group(1)
@@ -25,10 +26,10 @@ def main():
     ret = []
 
     for path in paths:
-        if not (path.startswith("examples") or path.startswith("plugins")):
+        if not (path.startswith("rust/examples") or path.startswith("rust/plugins")):
             continue
 
-        with open(f"{this_path}/{path}/Cargo.toml") as f:
+        with open(f"{source_path}/{path}/Cargo.toml") as f:
             data = f.read()
 
         cargo_name = re.search(r"name\s+=\s+\"(\S+)\"", data, re.MULTILINE).group(1)
