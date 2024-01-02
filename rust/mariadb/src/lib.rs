@@ -17,33 +17,44 @@
 
 use std::io::Write;
 
-#[cfg(feature = "service-sql")]
-mod value;
 mod my_alloc;
 pub mod plugin;
 #[cfg(feature = "service-sql")]
 pub mod service_sql;
+pub mod sql;
 #[cfg(feature = "storage")]
 pub mod storage;
 mod table;
 mod thd;
 mod util;
-
 #[cfg(feature = "service-sql")]
-#[doc(inline)]
-pub use value::*;
+mod value;
+
+#[cfg(test)]
+mod tests;
+
 pub use log;
 #[doc(hidden)]
 pub use mariadb_sys as bindings;
 pub use my_alloc::MemRoot;
-pub use table::Table;
+pub use table::TableShare;
+#[cfg(test)]
+use tests::assert_layouts_eq;
 pub use thd::Thd;
+#[cfg(feature = "service-sql")]
+#[doc(inline)]
+pub use value::*;
 
 #[doc(hidden)]
 pub mod internals {
     pub use cstr::cstr;
 
     pub use super::util::{parse_version_str, UnsafeSyncCell};
+}
+
+pub mod dbug {
+    //! Instrumentation for MariaDB's `dbug` log and backtrace module.
+    pub use mariadb_macros::dbug_instrument as instrument;
 }
 
 /// Just a more intuitive type alias for a pass/fail `Result` with no contents.

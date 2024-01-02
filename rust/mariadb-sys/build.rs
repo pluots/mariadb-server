@@ -180,6 +180,8 @@ fn make_bindings_with_includes(include_paths: &[PathBuf]) -> Result<Bindings, Er
         .vtable_generation(true)
         // We allow only specific types to avoid generating too many unneeded bindings
         //
+        // Bindings for dbug instrumentation
+        .allowlist_item("_db_.*")
         // Bindings for all plugins
         .allowlist_item(".*PLUGIN.*")
         .allowlist_item(".*INTERFACE_VERSION.*")
@@ -198,11 +200,14 @@ fn make_bindings_with_includes(include_paths: &[PathBuf]) -> Result<Bindings, Er
         // Items for storage engines
         .allowlist_item("handlerton")
         .allowlist_item("handler")
-        .allowlist_item("handler_bridge")
-        .allowlist_function("ha_construct_bridge")
+        .allowlist_item(".*(ha|handler)_bridge.*")
         .allowlist_item("st_mysql_storage.*")
         .allowlist_type("TABLE(_SHARE)?")
         .allowlist_type("MYSQL_HANDLERTON.*")
+        .allowlist_var("HA_.*")
+        .allowlist_var("IO_SIZE")
+        .allowlist_var("MAX_REF_PARTS")
+        .allowlist_var("MAX_DATA_LENGTH_FOR_KEY")
         // Items for the SQL service. Note that `sql_service` (from `st_service_ref`) needs to
         // be handwritten because it doesn't seem to import with the expected values (a static vs.
         // dynamic thing).

@@ -13,7 +13,8 @@ members = [
     "rust/examples/encryption-aes-rs",
     "rust/examples/ftparser-simple",
     "rust/examples/storage-simple",
+    "rust/examples/storage-csv",
     "rust/plugins/keymgt-clevis",
     "rust/plugins/encryption-file-chacha",
-    "rust/test-runner",
+    "rust/test-runner", 
 ]

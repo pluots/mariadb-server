@@ -25,15 +25,15 @@ class handler_bridge;
   for null then call the parent function if so at some point.
 */
 typedef struct handler_bridge_vt {
-  void (*constructor)(handler_bridge*, handlerton*, TABLE_SHARE*);
+  void (*constructor)(handler_bridge*, handlerton*, MEM_ROOT*, TABLE_SHARE*);
   void (*destructor)(handler_bridge*);
-  const char* (*index_type)(uint);
-  ulonglong  (*table_flags)();
-  ulong (*index_flags)(uint, uint, bool);
-  uint (*max_supported_record_length)();
-  uint (*max_supported_keys)();
-  uint (*max_supported_key_parts)();
-  uint (*max_supported_key_length)();
+  const char* (*index_type)(handler_bridge*, uint);
+  ulonglong  (*table_flags)(const handler_bridge*);
+  ulong (*index_flags)(const handler_bridge*, uint, uint, bool);
+  uint (*max_supported_record_length)(const handler_bridge*);
+  uint (*max_supported_keys)(const handler_bridge*);
+  uint (*max_supported_key_parts)(const handler_bridge*);
+  uint (*max_supported_key_length)(const handler_bridge*);
   IO_AND_CPU_COST (*scan_time)(handler_bridge*);
   IO_AND_CPU_COST (*keyread_time)(handler_bridge*, uint, ulong, ha_rows, ulonglong);
   IO_AND_CPU_COST (*rnd_pos_time)(handler_bridge*, ha_rows);
@@ -74,24 +74,30 @@ public:
   const handler_bridge_vt *const vt;
   /** Storage for anything needed. Should only be touched by the C API, not this class. */
   void *data;
-  handler_bridge(handlerton *hton, TABLE_SHARE *table_arg, const handler_bridge_vt *const vt)
+  /** Just a convenience point for a Rust type ID */
+  uint8_t type_id[16];
+  
+  handler_bridge(handlerton *hton, TABLE_SHARE *table_arg,
+                 MEM_ROOT *mem_root, const handler_bridge_vt *const vt)
     :handler(hton, table_arg),
     vt(vt)
   {
-    vt->constructor(this, hton, table_arg);
+    vt->constructor(this, hton, mem_root, table_arg);
   }
+  
   virtual ~handler_bridge() {
     vt->destructor(this);
   }
-  const char *index_type(uint inx) { return vt->index_type(inx); } 
-  ulonglong table_flags() const { return vt->table_flags(); }
+  
+  const char *index_type(uint inx) { return vt->index_type(this, inx); } 
+  ulonglong table_flags() const { return vt->table_flags(this); }
   ulong index_flags(uint inx, uint part, bool all_parts) const {
-    return vt->index_flags(inx, part, all_parts);
+    return vt->index_flags(this, inx, part, all_parts);
   }
-  uint max_supported_record_length() const { return vt->max_supported_record_length(); }
-  uint max_supported_keys() const { return vt->max_supported_keys(); }
-  uint max_supported_key_parts() const { return vt->max_supported_key_parts(); }
-  uint max_supported_key_length() const { return vt->max_supported_key_length(); }
+  uint max_supported_record_length() const { return vt->max_supported_record_length(this); }
+  uint max_supported_keys() const { return vt->max_supported_keys(this); }
+  uint max_supported_key_parts() const { return vt->max_supported_key_parts(this); }
+  uint max_supported_key_length() const { return vt->max_supported_key_length(this); }
   virtual IO_AND_CPU_COST scan_time() { return vt->scan_time(this); }
   virtual IO_AND_CPU_COST keyread_time(uint index, ulong ranges, ha_rows rows,
                                        ulonglong blocks) {
@@ -139,7 +145,12 @@ public:
   }
 };
 
-/** A builder that will create the C++ class from a C vtable */
+/**
+  A builder that will create the C++ class from a C vtable. This is used to create a
+  `handler` from a `handlerton`.
+ */
 extern "C" handler*
-ha_construct_bridge(handlerton*, TABLE_SHARE*, MEM_ROOT*,  const handler_bridge_vt*);
-extern "C" void ha_destroy_bridge(handler*);
+ha_bridge_construct(handlerton*, TABLE_SHARE*, MEM_ROOT*, const handler_bridge_vt*);
+
+/** Destroy a `handler_bridge` */
+extern "C" void ha_bridge_destroy(handler*);

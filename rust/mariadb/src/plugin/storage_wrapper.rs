@@ -1,42 +1,58 @@
 #![allow(unused)]
 
-use std::ffi::{c_char, c_int, c_uchar, c_uint, c_ulong, c_ulonglong, c_void};
+use std::any::TypeId;
+use std::ffi::{c_char, c_int, c_uchar, c_uint, c_ulong, c_ulonglong, c_void, CStr, CString};
+use std::sync::Mutex;
+use std::{mem, ptr};
 
 use log::info;
 
 use super::wrapper::{init_common, PluginMeta};
-use crate::bindings;
 use crate::storage::{Handler, Handlerton};
+use crate::{bindings, MemRoot, TableShare};
 
-/// Trait implemented by the macro to creqte a
+/// Trait implemented by the macro for an easy
 pub trait HandlertonMeta: Handlerton + PluginMeta {
+    /// This function should return the vtable, which should be located in statics.
     fn get_vtable() -> &'static bindings::handler_bridge_vt;
 }
 
+// fn build_cstring(s: &str) -> &'static CStr {
+//     static ALL: Mutex<Vec<CString>> = Mutex::new(Vec::new());
+//     let cs = CString::try_from(s).unwrap();
+//     ALL.lock().unwrap().push(cs);
+//     todo!()
+// }
+
+/// Initialize the handlerton
 pub extern "C" fn wrap_storage_init_fn<P: HandlertonMeta>(hton: *mut c_void) -> c_int {
+    /// Wrapper to create a handler from this handlerton
     #[allow(improper_ctypes_definitions)]
-    unsafe extern "C" fn create<P: HandlertonMeta>(
+    unsafe extern "C" fn create_handler<P: HandlertonMeta>(
         hton: *mut bindings::handlerton,
         table: *mut bindings::TABLE_SHARE,
         mem_root: *mut bindings::MEM_ROOT,
     ) -> *mut bindings::handler {
         let vt = P::get_vtable();
-        unsafe { bindings::ha_construct_bridge(hton, table, mem_root, vt) }
+        unsafe { bindings::ha_bridge_construct(hton, table, mem_root, vt) }
     }
 
     init_common();
+
     let hton = hton.cast::<bindings::handlerton>();
     unsafe {
-        (*hton).create = Some(create::<P>);
+        (*hton).create = Some(create_handler::<P>);
         (*hton).flags = P::FLAGS;
+        // (*hton).tablefile_extensions =
     }
 
     log::info!("loaded storage engine {}", P::NAME);
     0
 }
 
+/// Deinitialize the handlerton. Nothing to do here for now.
 pub extern "C" fn wrap_storage_deinit_fn<P: Handlerton>(hton: *mut c_void) -> c_int {
-    todo!()
+    0
 }
 
 pub const fn build_handler_vtable<H: Handlerton>() -> bindings::handler_bridge_vt {
@@ -81,26 +97,43 @@ pub const fn build_handler_vtable<H: Handlerton>() -> bindings::handler_bridge_v
 }
 
 unsafe extern "C" fn wrap_constructor<H: Handler>(
-    arg1: *mut bindings::handler_bridge,
-    arg2: *mut bindings::handlerton,
-    arg3: *mut bindings::TABLE_SHARE,
+    this: *mut bindings::handler_bridge,
+    _hton: *mut bindings::handlerton,
+    mem_root: *mut bindings::MEM_ROOT,
+    table: *mut bindings::TABLE_SHARE,
 ) {
+    let ha_rs = unsafe { H::new(TableShare::from_raw(table), MemRoot::from_raw(mem_root)) };
+    unsafe { (*this).data = Box::into_raw(Box::new(ha_rs)).cast() };
+
+    (*this).type_id = mem::transmute(TypeId::of::<H>());
+}
+
+unsafe extern "C" fn wrap_destructor<H: Handler>(this: *mut bindings::handler_bridge) {
+    // Sanity check we have the expected type
+    let tid: TypeId = mem::transmute((*this).type_id);
+    debug_assert_eq!(tid, TypeId::of::<H>());
+
+    let ha_rs = unsafe { Box::from_raw((*this).data.cast::<H>()) };
+    (*this).data = ptr::null_mut();
+
+    drop(ha_rs)
+}
+
+unsafe extern "C" fn wrap_index_type<H: Handler>(
+    this: *mut bindings::handler_bridge,
+    arg1: c_uint,
+) -> *const c_char {
     todo!()
 }
 
-unsafe extern "C" fn wrap_destructor<H: Handler>(arg1: *mut bindings::handler_bridge) {
-    todo!()
-}
-
-unsafe extern "C" fn wrap_index_type<H: Handler>(arg1: c_uint) -> *const c_char {
-    todo!()
-}
-
-unsafe extern "C" fn wrap_table_flags<H: Handler>() -> c_ulonglong {
+unsafe extern "C" fn wrap_table_flags<H: Handler>(
+    this: *const bindings::handler_bridge,
+) -> c_ulonglong {
     todo!()
 }
 
 unsafe extern "C" fn wrap_index_flags<H: Handler>(
+    this: *const bindings::handler_bridge,
     arg1: c_uint,
     arg2: c_uint,
     arg3: bool,
@@ -108,19 +141,27 @@ unsafe extern "C" fn wrap_index_flags<H: Handler>(
     todo!()
 }
 
-unsafe extern "C" fn wrap_max_supported_record_length<H: Handler>() -> c_uint {
+unsafe extern "C" fn wrap_max_supported_record_length<H: Handler>(
+    this: *const bindings::handler_bridge,
+) -> c_uint {
     todo!()
 }
 
-unsafe extern "C" fn wrap_max_supported_keys<H: Handler>() -> c_uint {
+unsafe extern "C" fn wrap_max_supported_keys<H: Handler>(
+    this: *const bindings::handler_bridge,
+) -> c_uint {
     todo!()
 }
 
-unsafe extern "C" fn wrap_max_supported_key_parts<H: Handler>() -> c_uint {
+unsafe extern "C" fn wrap_max_supported_key_parts<H: Handler>(
+    this: *const bindings::handler_bridge,
+) -> c_uint {
     todo!()
 }
 
-unsafe extern "C" fn wrap_max_supported_key_length<H: Handler>() -> c_uint {
+unsafe extern "C" fn wrap_max_supported_key_length<H: Handler>(
+    this: *const bindings::handler_bridge,
+) -> c_uint {
     todo!()
 }
 
@@ -131,7 +172,7 @@ unsafe extern "C" fn wrap_scan_time<H: Handler>(
 }
 
 unsafe extern "C" fn wrap_keyread_time<H: Handler>(
-    arg1: *mut bindings::handler_bridge,
+    this: *mut bindings::handler_bridge,
     arg2: c_uint,
     arg3: c_ulong,
     arg4: bindings::ha_rows,
@@ -141,14 +182,14 @@ unsafe extern "C" fn wrap_keyread_time<H: Handler>(
 }
 
 unsafe extern "C" fn wrap_rnd_pos_time<H: Handler>(
-    arg1: *mut bindings::handler_bridge,
+    this: *mut bindings::handler_bridge,
     arg2: bindings::ha_rows,
 ) -> bindings::IO_AND_CPU_COST {
     todo!()
 }
 
 unsafe extern "C" fn wrap_open<H: Handler>(
-    arg1: *mut bindings::handler_bridge,
+    this: *mut bindings::handler_bridge,
     arg2: *const c_char,
     arg3: c_int,
     arg4: c_uint,

@@ -2,6 +2,7 @@
 
 // #include <sql_plugin.h>
 #include <my_global.h>
+#include <my_dbug.h>
 #include <handler.h>
 #include <handler_bridge.h>
 #include <mysql.h>

@@ -13,6 +13,7 @@ time = { version = "0.3.29", features = ["formatting"]}
 log = "0.4.20"
 env_logger = "0.10.0"
 encoding_rs = "0.8.33"
+strum = { version = "0.25.0", features = ["derive"] }
 
 # We use cargo features to segment off different areas of the MariaDB source that
 # require specific linkage.

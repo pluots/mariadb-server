@@ -9,9 +9,9 @@ use mariadb::storage::{Handler, Handlerton, Mode, OpenOp, StorageResult};
 use mariadb::{register_plugin_storage, MemRoot, TableShare};
 
 register_plugin_storage! {
-    name: "EXAMPLE_RUST",
+    name: "EXAMPLE_RUST_CSV",
     author: "Trevor Gross",
-    description: "Sample storage engine plugin",
+    description: "Reimplementation of ha_tina for debugging",
     license: License::Gpl,
     maturity: Maturity::Experimental,
     version: "0.1",

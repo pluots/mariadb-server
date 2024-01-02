@@ -1,6 +1,6 @@
 use super::Handler;
 use crate::thd::ThdKillLevel;
-use crate::{bindings, MemRoot, Table, Thd};
+use crate::{bindings, MemRoot, TableShare, Thd};
 
 pub enum Error {}
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
@@ -55,8 +55,6 @@ pub trait Handlerton {
     /// Extensions of files created for a single table in the database directory
     /// (`datadir/db_name/`).
     const TABLEFILE_EXTENSIONS: &'static [&'static str] = &[];
-
-    fn create_handler(table: Table, mem_root: MemRoot) -> Self::Handler;
 
     // fn close_connection(thd: &HandlertonThd) -> Result;
     // fn kill_query(thd: &HandlertonThd, level: ThdKillLevel);
