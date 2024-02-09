@@ -6,6 +6,7 @@ use std::path::Path;
 use mariadb::log::debug;
 use mariadb::plugin::{License, Maturity};
 use mariadb::storage::{Handler, Handlerton, Mode, OpenOp, StorageResult};
+use mariadb::table::state::Create;
 use mariadb::{register_plugin_storage, MemRoot, TableShare};
 
 register_plugin_storage! {
@@ -31,7 +32,7 @@ impl Handler for ExampleHandler {
     type Handlerton = ExampleHton;
 
     // #[mariadb::dbug::instrument]
-    fn new(table: &TableShare, mem_root: MemRoot) -> Self {
+    fn new(table: &TableShare<Create>, mem_root: MemRoot) -> Self {
         Self {}
     }
 

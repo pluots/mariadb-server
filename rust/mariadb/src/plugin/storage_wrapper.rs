@@ -96,6 +96,12 @@ pub const fn build_handler_vtable<H: Handlerton>() -> bindings::handler_bridge_v
     }
 }
 
+/// This is the data that we store in the spare pointer of our class
+struct HandlerWrapper<H> {
+    handler: H,
+    type_id: TypeId,
+}
+
 unsafe extern "C" fn wrap_constructor<H: Handler>(
     this: *mut bindings::handler_bridge,
     _hton: *mut bindings::handlerton,

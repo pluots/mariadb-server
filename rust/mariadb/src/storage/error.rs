@@ -1,3 +1,5 @@
+use std::io;
+
 use strum::{EnumIter, IntoEnumIterator};
 
 use crate::bindings;
@@ -22,7 +24,7 @@ pub enum StorageError {
     /// Record-file is crashed or table is corrupt
     WrongInRecord = bindings::HA_ERR_WRONG_IN_RECORD as isize,
     /// Out of memory
-    OutOfMem = bindings::HA_ERR_OUT_OF_MEM as isize,
+    OutOfMemory = bindings::HA_ERR_OUT_OF_MEM as isize,
     /// Initialization failed and should be retried
     RetryInit = bindings::HA_ERR_RETRY_INIT as isize,
     /// not a MYI file - no signature
@@ -153,6 +155,17 @@ pub enum StorageError {
     CommitError = bindings::HA_ERR_COMMIT_ERROR as isize,
     PartitionList = bindings::HA_ERR_PARTITION_LIST as isize,
     NoEncryption = bindings::HA_ERR_NO_ENCRYPTION as isize,
+}
+
+/// A lot of storage errors are IO related. We provide an automated conversion that works with `?`.
+impl From<io::Error> for StorageError {
+    fn from(e: io::Error) -> Self {
+        log::trace!("{e}"); // Caller probably logs the error but log it here just in case
+        match e.kind() {
+            io::ErrorKind::OutOfMemory => Self::OutOfMemory,
+            _ => Self::InternalError,
+        }
+    }
 }
 
 #[cfg(test)]

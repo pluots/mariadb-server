@@ -46,7 +46,7 @@ impl<'a> HandlertonThd<'a> {
 /// A "handlerton" ("handler singleton") is the entrypoint for a storage engine handler.
 ///
 /// This defines registration and creation information.
-pub trait Handlerton {
+pub trait Handlerton: Send + Sync {
     type Handler: Handler;
     /// A type of data that is stored during a savepoint.
     type SavePoint;

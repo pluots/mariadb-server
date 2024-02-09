@@ -24,7 +24,8 @@ pub mod service_sql;
 pub mod sql;
 #[cfg(feature = "storage")]
 pub mod storage;
-mod table;
+pub mod sys;
+pub mod table;
 mod thd;
 mod util;
 #[cfg(feature = "service-sql")]
@@ -37,13 +38,18 @@ pub use log;
 #[doc(hidden)]
 pub use mariadb_sys as bindings;
 pub use my_alloc::MemRoot;
-pub use table::TableShare;
+use sealed::Sealed;
+pub use table::{Table, TableShare, TableState};
 #[cfg(test)]
 use tests::assert_layouts_eq;
 pub use thd::Thd;
 #[cfg(feature = "service-sql")]
 #[doc(inline)]
 pub use value::*;
+
+mod sealed {
+    pub trait Sealed {}
+}
 
 #[doc(hidden)]
 pub mod internals {

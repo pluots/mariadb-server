@@ -6,6 +6,8 @@ use std::path::Path;
 
 use super::{Handlerton, StorageError, StorageResult, MAX_RECORD_LENGTH};
 use crate::sql::{MAX_DATA_LENGTH_FOR_KEY, MAX_REFERENCE_PARTS};
+use crate::table::state::Create;
+use crate::table::Table;
 use crate::{bindings, MemRoot, TableShare};
 
 pub const IO_SIZE: usize = bindings::IO_SIZE as usize;
@@ -126,7 +128,7 @@ pub trait Handler: 'static {
     /// # When is this called?
     ///
     /// - Every time there is a new connection
-    fn new(table: &TableShare, mem_root: MemRoot) -> Self;
+    fn new(table_share: &TableShare<Create>, mem_root: MemRoot) -> Self;
 
     /// Open a table, the name will be the name of the file.
     ///
@@ -145,7 +147,9 @@ pub trait Handler: 'static {
     /// # When is this called?
     ///
     /// - SQL `CREATE TABLE` statements
-    fn create(&self, name: &CStr, form: TableShare, create_info: &CreateInfo) {}
+    fn create(&self, name: &CStr, table: Table<Create>, create_info: &CreateInfo) -> StorageResult {
+        Ok(())
+    }
 
     fn table_flags(&self) -> TableFlags {
         TableFlags::default()
