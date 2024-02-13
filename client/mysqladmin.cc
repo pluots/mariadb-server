@@ -667,6 +667,7 @@ static int execute_commands(MYSQL *mysql,int argc, char **argv)
 
   struct my_rnd_struct rand_st;
   char buff[FN_REFLEN + 20];
+  size_t buff_len= sizeof(buff);
 
   for (; argc > 0 ; argv++,argc--)
   {
@@ -681,7 +682,8 @@ static int execute_commands(MYSQL *mysql,int argc, char **argv)
       }
       if (maybe_disable_binlog(mysql))
         return -1;
-      snprintf(buff, sizeof(buff), "create database `%.*s`",FN_REFLEN,argv[1]);
+      DBUG_ASSERT(snprintf(buff, buff_len, "create database `%.*s`",
+          FN_REFLEN,argv[1]) < buff_len);
       if (mysql_query(mysql,buff))
       {
 	my_printf_error(0,"CREATE DATABASE failed; error: '%-.200s'",
@@ -722,7 +724,8 @@ static int execute_commands(MYSQL *mysql,int argc, char **argv)
 
       if (opt_shutdown_wait_for_slaves)
       {
-        snprintf(buff, sizeof(buff), "SHUTDOWN WAIT FOR ALL SLAVES");
+        DBUG_ASSERT(snprintf(buff, buff_len, "SHUTDOWN WAIT FOR ALL SLAVES")
+            < buff_len);
         if (mysql_query(mysql, buff))
         {
           my_printf_error(0, "%s failed; error: '%-.200s'",
@@ -1043,6 +1046,7 @@ static int execute_commands(MYSQL *mysql,int argc, char **argv)
     case ADMIN_PASSWORD:
     {
       char buff[128],crypted_pw[64];
+      size_t buff_len = sizeof(buff);
       time_t start_time;
       char *typed_password= NULL, *verified= NULL;
       /* Do initialization the same way as we do in mysqld */
@@ -1124,7 +1128,8 @@ static int execute_commands(MYSQL *mysql,int argc, char **argv)
       }
       else
 	crypted_pw[0]=0;			/* No password */
-      snprintf(buff, sizeof(buff), "set password='%s',sql_log_off=0",crypted_pw);
+      DBUG_ASSERT(snprintf(buff, buff_len, "set password='%s',sql_log_off=0", crypted_pw)
+        < buff_len) ;
 
       if (mysql_query(mysql,"set sql_log_off=1"))
       {
@@ -1368,7 +1373,8 @@ static int drop_db(MYSQL *mysql, const char *db)
       return -1;
     }
   }
-  snprintf(name_buff,name_buf_len,"drop database `%.*s`",FN_REFLEN,db);
+  DBUG_ASSERT(snprintf(name_buff,name_buf_len,"drop database `%.*s`",FN_REFLEN,db)
+    < name_buf_len);
   if (mysql_query(mysql,name_buff))
   {
     my_printf_error(0, "DROP DATABASE %s failed;\nerror: '%s'", error_flags,

@@ -311,7 +311,7 @@ class Load_log_processor
       /* If we have to try more than 1000 times, something is seriously wrong */
       for (uint version= 0; version<1000; version++)
       {
-	snprintf(file_name_end,5,"-%x",version);
+	DBUG_ASSERT(snprintf(file_name_end,5,"-%x",version) < 5);
 	if ((res= my_create(filename,0,
 			    O_CREAT|O_EXCL|O_BINARY|O_WRONLY,MYF(0)))!=-1)
 	  return res;
@@ -417,6 +417,7 @@ Exit_status Load_log_processor::process_first_event(const char *bname,
                                                     uint file_id)
 {
   size_t full_len= target_dir_name_len + blen + 9 + 9 + 1;
+  size_t tmp_len=0;
   Exit_status retval= OK_CONTINUE;
   char *fname, *ptr, *fname_end;
   File file;
@@ -434,7 +435,9 @@ Exit_status Load_log_processor::process_first_event(const char *bname,
   ptr= fname + target_dir_name_len;
   memcpy(ptr,bname,blen);
   ptr+= blen;
-  ptr+= snprintf(ptr, fname_end-ptr, "-%x", file_id);
+  tmp_len= snprintf(ptr, fname_end-ptr, "-%x", file_id);
+  ptr+= tmp_len;
+  DBUG_ASSERT(tmp_len < fname_end-ptr);
 
   if ((file= create_unique_file(fname,ptr)) < 0)
   {
