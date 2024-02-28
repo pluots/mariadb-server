@@ -35,6 +35,7 @@
 
 #include <my_bitmap.h>
 #include "rpl_constants.h"
+#include "bufcursor.h"
 #include <vector>
 #include <string>
 #include <functional>
@@ -2874,43 +2875,37 @@ private:
   @return  the value of the buffer pointer
 */
 
-inline char *serialize_xid(char *buf, size_t buf_len, long fmt, long gln,
+inline void serialize_xid(bufcursor *curs, long fmt, long gln,
                            long bln, const char *dat)
 {
   int i;
-  char *c= buf;
   /*
     Build a string consisting of the hex format representation of XID
     as passed through fmt,gln,bln,dat argument:
       X'hex11hex12...hex1m',X'hex21hex22...hex2n',11
     and store it into buf.
   */
-  c[0]= 'X';
-  c[1]= '\'';
-  c+= 2;
+
+  bcurs_write_str(curs, "X'");
+  bcurs_ensure_spare_cap(curs, gln * 2);
+
   for (i= 0; i < gln; i++)
   {
-    c[0]=_dig_vec_lower[((uchar*) dat)[i] >> 4];
-    c[1]=_dig_vec_lower[((uchar*) dat)[i] & 0x0f];
-    c+= 2;
+    bcurs_position(curs)[0]=_dig_vec_lower[((uchar*) dat)[i] >> 4],
+    bcurs_position(curs)[1]=_dig_vec_lower[((uchar*) dat)[i] & 0x0f];
+    bcurs_seek(curs, 2);
   }
-  c[0]= '\'';
-  c[1]= ',';
-  c[2]= 'X';
-  c[3]= '\'';
-  c+= 4;
+
+  bcurs_write_str(curs, "',X'");
 
   for (; i < gln + bln; i++)
   {
-    c[0]=_dig_vec_lower[((uchar*) dat)[i] >> 4];
-    c[1]=_dig_vec_lower[((uchar*) dat)[i] & 0x0f];
-    c+= 2;
+    bcurs_position(curs)[0]=_dig_vec_lower[((uchar*) dat)[i] >> 4];
+    bcurs_position(curs)[1]=_dig_vec_lower[((uchar*) dat)[i] & 0x0f];
+    bcurs_seek(curs, 2);
   }
-  c[0]= '\'';
-  // TODO: use real value, struggling with imports here
-  snprintf(c+1, (buf + buf_len) - (c + 1), ",%lu", fmt);
 
- return buf;
+  bcurs_write(curs, "',%lu", fmt);
 }
 
 /*
@@ -2927,9 +2922,12 @@ static const uint ser_buf_size=
 struct event_mysql_xid_t :  MYSQL_XID
 {
   char buf[ser_buf_size];
+
   char *serialize()
   {
-    return serialize_xid(buf, sizeof(buf), formatID, gtrid_length, bqual_length, data);
+    bufcursor curs= bcurs_new(buf, sizeof(buf));
+    serialize_xid(&curs, formatID, gtrid_length, bqual_length, data);
+    return buf;
   }
 };
 
@@ -2938,13 +2936,16 @@ struct event_xid_t : XID
 {
   char buf[ser_buf_size];
 
-  char *serialize(char *buf_arg, size_t buf_len)
+  char *serialize(bufcursor *curs)
   {
-    return serialize_xid(buf_arg, buf_len, formatID, gtrid_length, bqual_length, data);
+    serialize_xid(curs, formatID, gtrid_length, bqual_length, data);
+    return buf;
   }
   char *serialize()
   {
-    return serialize(buf, sizeof(buf));
+    bufcursor curs= bcurs_new(buf, sizeof(buf));
+    serialize(&curs);
+    return buf;
   }
 };
 #endif

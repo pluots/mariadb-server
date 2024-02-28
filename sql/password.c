@@ -107,12 +107,15 @@ void hash_password(ulong *result, const char *password, uint password_len)
 }
 
 
+#define SCRAMBLED_PW_LEN 64
+
 /*
     Create password to be stored in user database from raw string
     Used for pre-4.1 password handling
   SYNOPSIS
     my_make_scrambled_password_323()
-    to        OUT store scrambled password here. At least 64 bytes.
+    to        OUT store scrambled password here. At least SCRAMBLED_PW_LEN 
+                  bytes.
     password  IN  user-supplied password
     pass_len  IN  length of password string
 */
@@ -122,7 +125,7 @@ void my_make_scrambled_password_323(char *to, const char *password,
 {
   ulong hash_res[2];
   hash_password(hash_res, password, (uint) pass_len);
-  snprintf(to, 64, "%08lx%08lx", hash_res[0], hash_res[1]);
+  snprintf(to, SCRAMBLED_PW_LEN, "%08lx%08lx", hash_res[0], hash_res[1]);
 }
 
 
