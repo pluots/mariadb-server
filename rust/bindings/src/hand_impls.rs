@@ -15,13 +15,21 @@ pub const PLUGIN_VAR_MASK: u32 = super::PLUGIN_VAR_READONLY
     | super::PLUGIN_VAR_DEPRECATED
     | super::PLUGIN_VAR_MEMALLOC;
 
-// We hand write these stucts because the definition is tricky, not all fields are
-// always present
-
-// no support for THD yet
+/// Helper macro to create structs we use for sysvars
+///
+/// This is kind of a Rust version of the `DECLARE_MYSQL_SYSVAR_X` macros. We reimplement instead
+/// of using the C version because the definition is tricky, not all fields are always present.
+/// No support for THD yet.
 macro_rules! declare_sysvar_type {
-    (@common $name:ident: $(#[$doc:meta] $fname:ident: $fty:ty),* $(,)*) => {
+    (
+        @common
+        $name:ident: $(
+            #[$field_doc:meta]
+            $field_name:ident: $field_ty:ty
+        ),*; $struct_doc:literal
+    ) => {
         // Common implementation
+        #[doc = $struct_doc]
         #[repr(C)]
         #[derive(Debug)]
         pub struct $name {
@@ -38,60 +46,67 @@ macro_rules! declare_sysvar_type {
 
             // Repeated fields
             $(
-                #[$doc]
-                pub $fname: $fty
+                #[$field_doc]
+                pub $field_name: $field_ty
             ),*
         }
     };
-    (basic: $name:ident, $ty:ty) => {
+
+    (basic: $name:ident, $c_ty:ty; $doc:literal) => {
         // A "basic" sysvar
         declare_sysvar_type!{
             @common $name:
             #[doc = "Pointer to the value"]
-            value: *mut $ty,
+            value: *mut $c_ty,
             #[doc = "Default value"]
-            def_val: $ty,
+            def_val: $c_ty;
+            $doc
         }
     };
-    (const basic: $name:ident, $ty:ty) => {
+
+    (const basic: $name:ident, $c_ty:ty; $doc:literal) => {
         // A "basic" sysvar
         declare_sysvar_type!{
             @common $name:
             #[doc = "Pointer to the value"]
-            value: *const $ty,
+            value: *const $c_ty,
             #[doc = "Default value"]
-            def_val: $ty,
+            def_val: $c_ty;
+            $doc
         }
     };
-    (simple: $name:ident, $ty:ty) => {
+
+    (simple: $name:ident, $c_ty:ty; $doc:literal) => {
         // A "simple" sysvar, with minimum maximum and block size
         declare_sysvar_type!{
             @common $name:
             #[doc = "Pointer to the value"]
-            value: *mut $ty,
+            value: *mut $c_ty,
             #[doc = "Default value"]
-            def_val: $ty,
-            #[doc = "Min value"]
-            min_val: $ty,
-            #[doc = "Max value"]
-            max_val: $ty,
+            def_val: $c_ty,
+            #[doc = "Minimum value"]
+            min_val: $c_ty,
+            #[doc = "Maximum value"]
+            max_val: $c_ty,
             #[doc = "Block size"]
-            blk_sz: $ty,
+            blk_sz: $c_ty;
+            $doc
         }
     };
-    (typelib: $name:ident, $ty:ty) => {
+
+    (typelib: $name:ident, $c_ty:ty; $doc:literal) => {
         // A "typelib" sysvar
         declare_sysvar_type!{
             @common $name:
             #[doc = "Pointer to the value"]
-            value: *mut $ty,
+            value: *mut $c_ty,
             #[doc = "Default value"]
-            def_val: $ty,
+            def_val: $c_ty,
             #[doc = "Typelib"]
-            typelib: *const TYPELIB
+            typelib: *const TYPELIB;
+            $doc
         }
     };
-
 
     // (typelib: $name:ident, $ty:ty) => {
 
@@ -101,18 +116,18 @@ macro_rules! declare_sysvar_type {
     // };
 }
 
-declare_sysvar_type!(@common sysvar_common_t:);
-declare_sysvar_type!(basic: sysvar_bool_t, bool);
-declare_sysvar_type!(basic: sysvar_str_t, *mut c_char);
-declare_sysvar_type!(typelib: sysvar_enum_t, c_ulong);
-declare_sysvar_type!(typelib: sysvar_set_t, c_ulonglong);
-declare_sysvar_type!(simple: sysvar_int_t, c_int);
-declare_sysvar_type!(simple: sysvar_long_t, c_long);
-declare_sysvar_type!(simple: sysvar_longlong_t, c_longlong);
-declare_sysvar_type!(simple: sysvar_uint_t, c_uint);
-declare_sysvar_type!(simple: sysvar_ulong_t, c_ulong);
-declare_sysvar_type!(simple: sysvar_ulonglong_t, c_ulonglong);
-declare_sysvar_type!(simple: sysvar_double_t, c_double);
+declare_sysvar_type!(@common sysvar_common_t:; "");
+declare_sysvar_type!(basic: sysvar_bool_t, bool; "");
+declare_sysvar_type!(basic: sysvar_str_t, *mut c_char; "");
+declare_sysvar_type!(typelib: sysvar_enum_t, c_ulong; "");
+declare_sysvar_type!(typelib: sysvar_set_t, c_ulonglong; "");
+declare_sysvar_type!(simple: sysvar_int_t, c_int; "Sysvar that stores an int");
+declare_sysvar_type!(simple: sysvar_long_t, c_long; "Sysvar that stores a long");
+declare_sysvar_type!(simple: sysvar_longlong_t, c_longlong; "Sysvar that stores a longlong");
+declare_sysvar_type!(simple: sysvar_uint_t, c_uint; "Sysvar that stores a uint");
+declare_sysvar_type!(simple: sysvar_ulong_t, c_ulong; "Sysvar that stores a ulong");
+declare_sysvar_type!(simple: sysvar_ulonglong_t, c_ulonglong; "Sysvar that stores a ulonglong");
+declare_sysvar_type!(simple: sysvar_double_t, c_double; "Sysvar that stores a double");
 
 // declare_sysvar_type!(thdbasic: thdvar_bool_t, bool);
 // declare_sysvar_type!(thdbasic: thdvar_str_t, *mut c_char);
