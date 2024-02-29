@@ -4,8 +4,12 @@
 # See <https://embarkstudios.github.io/cargo-deny/index.html> for configuration
 # information.
 
+[bans]
+multiple-versions = "allow"
+
 [licenses]
-# The lint level for crates which do not have a detectable license
+# Enable once the CI action version gets bumped
+# version = 2
 unlicensed = "deny"
 
 # List of explicitly allowed licenses. Compatibility is listed at
@@ -19,9 +23,6 @@ allow = [
     "MPL-2.0",
     "MIT",
 ]
-
-# List of explicitly disallowed licenses
-deny = []
 
 # Allow exceptions for specifc crates on a case-by-case basis
 exceptions = [
@@ -40,7 +41,6 @@ expression = "MIT AND ISC AND OpenSSL"
 license-files = [
     { path = "LICENSE", hash = 0xbd0eed23 },
 ]
-
 
 [sources.allow-org]
 # allow git dependencies only from the mariadb organization

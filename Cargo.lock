@@ -289,9 +289,9 @@ checksum = "98cc8fbded0c607b7ba9dd60cd98df59af97e84d24e49c8557331cfc26d301ce"
 
 [[package]]
 name = "clevis"
-version = "0.4.3"
+version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6d1b7c4401001828664aba577396839caac1972893241f3baf22549a156ad45"
+checksum = "89cda158f481ff971c51245c35021fb92f65fe8feeb7e90e8a0619857ab63f40"
 dependencies = [
  "aead",
  "base64ct",
@@ -750,9 +750,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "2.2.4"
+version = "2.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "967d6dd42f16dbf0eb8040cb9e477933562684d3918f7d253f2ff9087fb3e7a3"
+checksum = "7b0b929d511467233429c45a44ac1dcaa21ba0f5ba11e4879e6ed28ddb4f9df4"
 dependencies = [
  "equivalent",
  "hashbrown",
