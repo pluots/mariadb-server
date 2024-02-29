@@ -7,6 +7,8 @@
 #![allow(clippy::useless_transmute)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::missing_safety_doc)]
+#![allow(clippy::transmute_int_to_bool)]
+#![allow(clippy::type_complexity)]
 // FIXME: <https://github.com/rust-lang/rust-bindgen/issues/2699>
 #![allow(improper_ctypes)]
 

@@ -34,7 +34,7 @@ fn make_bindings() {
     // We try each of these methods to generate paths, closures so we can call
     // them lazily (since they may have side effects).
     let try_make_incl_paths = [
-        || include_paths_from_cmake(),
+        include_paths_from_cmake,
         || Some(vec![mariadb_root()]),
         || Some(configure_returning_incl_paths()),
     ];

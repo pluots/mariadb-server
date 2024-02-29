@@ -1,8 +1,10 @@
+#![allow(clippy::cast_precision_loss)]
+
 use std::cmp::max;
 use std::ffi::{c_int, c_uint, c_ulong, CStr};
 use std::marker::PhantomData;
-use std::mem;
 use std::path::Path;
+use std::{mem, ptr};
 
 use super::{Handlerton, StorageError, StorageResult, MAX_RECORD_LENGTH};
 use crate::sql::{MAX_DATA_LENGTH_FOR_KEY, MAX_REFERENCE_PARTS};
@@ -27,7 +29,7 @@ impl IoAndCpuCost {
     }
 
     pub fn cpu(&self) -> f64 {
-        self.0.io
+        self.0.cpu
     }
 }
 
@@ -51,10 +53,10 @@ pub struct HandlerCtx<'a> {
 
 impl<'a> HandlerCtx<'a> {
     fn stats(&self) -> &'a Statistics {
-        unsafe { mem::transmute(&self.inner.stats) }
+        unsafe { *ptr::addr_of!(self.inner.stats).cast() }
     }
     fn costs(&self) -> &'a OptimizerCosts {
-        unsafe { mem::transmute(&self.inner.costs) }
+        unsafe { *ptr::addr_of!(self.inner.costs).cast() }
     }
 }
 

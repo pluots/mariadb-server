@@ -3,6 +3,7 @@
 #![warn(clippy::nursery)]
 #![warn(clippy::str_to_string)]
 #![warn(clippy::cast_lossless)]
+#![allow(unknown_lints)] // we build across multiple versions
 #![allow(clippy::option_if_let_else)]
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::similar_names)]
@@ -13,6 +14,7 @@
 #![allow(clippy::missing_safety_doc)]
 #![allow(clippy::missing_const_for_fn)]
 #![allow(clippy::module_name_repetitions)]
+#![allow(clippy::manual_c_str_literals)]
 #![allow(clippy::missing_inline_in_public_items)]
 
 use std::io::Write;
@@ -56,9 +58,6 @@ pub mod dbug {
     //! Instrumentation for MariaDB's `dbug` log and backtrace module.
     pub use mariadb_macros::dbug_instrument as instrument;
 }
-
-/// Just a more intuitive type alias for a pass/fail `Result` with no contents.
-pub type EmptyResult = Result<(), ()>;
 
 /// Our main logger config
 ///

@@ -31,7 +31,7 @@ pub enum StorageError {
     WrongCommand = bindings::HA_ERR_WRONG_COMMAND as isize,
     /// old databasfile
     OldFile = bindings::HA_ERR_OLD_FILE as isize,
-    /// No record read in update()
+    /// No record read in `update()`
     NoActiveRecord = bindings::HA_ERR_NO_ACTIVE_RECORD as isize,
     /// A record is not there
     RecordDeleted = bindings::HA_ERR_RECORD_DELETED as isize,

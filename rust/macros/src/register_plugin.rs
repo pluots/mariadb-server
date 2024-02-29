@@ -335,7 +335,7 @@ impl PluginInfo {
 struct VariableBodies {
     /// This body will be added
     sysvar_body: TokenStream,
-    /// What to put in the registering `st_mariadb_plugin
+    /// What to put in the registering `st_mariadb_plugin`
     sysvar_field: TokenStream,
 }
 

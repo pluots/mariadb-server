@@ -6,4 +6,4 @@ license = "GPL-2.0-only"
 
 [dependencies]
 hex = "0.4.3"
-log = "0.4.20"
+log = "0.4.21"

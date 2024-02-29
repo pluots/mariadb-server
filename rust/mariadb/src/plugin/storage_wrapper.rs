@@ -1,4 +1,5 @@
 #![allow(unused)]
+#![allow(clippy::extra_unused_type_parameters)]
 
 use std::any::TypeId;
 use std::ffi::{c_char, c_int, c_uchar, c_uint, c_ulong, c_ulonglong, c_void, CStr, CString};
@@ -116,7 +117,7 @@ unsafe extern "C" fn wrap_destructor<H: Handler>(this: *mut bindings::handler_br
     let ha_rs = unsafe { Box::from_raw((*this).data.cast::<H>()) };
     (*this).data = ptr::null_mut();
 
-    drop(ha_rs)
+    drop(ha_rs);
 }
 
 unsafe extern "C" fn wrap_index_type<H: Handler>(

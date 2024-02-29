@@ -37,6 +37,7 @@ impl<'a> HandlertonThd<'a> {
     }
 
     fn data(&self) {
+        todo!()
         // let x = self.thd.0.ha_data[self.slot];
     }
 }
@@ -88,6 +89,7 @@ pub fn initialize_handlerton<T: Handlerton>(hton: &mut bindings::handlerton) {
     hton.kill_query = Some(wrap_kill_query::<T>);
 }
 
+#[allow(clippy::extra_unused_type_parameters)] // expected until H is used
 #[allow(improper_ctypes_definitions)] // level is not FFI-safe
 unsafe extern "C" fn wrap_kill_query<H: Handlerton>(
     hton: *mut bindings::handlerton,

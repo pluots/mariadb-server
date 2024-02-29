@@ -1,4 +1,5 @@
 //! "show variables" and "system variables"
+#![allow(clippy::new_without_default)]
 
 use std::cell::UnsafeCell;
 use std::ffi::{c_int, c_longlong, c_ulonglong, c_void, CStr, CString};

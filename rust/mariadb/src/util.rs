@@ -1,8 +1,6 @@
 use std::cell::UnsafeCell;
 use std::ffi::{c_int, c_uint};
 
-use crate::EmptyResult;
-
 /// Used for plugin registrations, which are in global scope.
 #[doc(hidden)]
 #[derive(Debug)]
@@ -36,11 +34,11 @@ unsafe impl<T> Sync for UnsafeSyncCell<T> {}
 
 /// Turn an integer into a `Result<(), ()>`. 0 is success, anything else is an error.
 #[allow(dead_code)]
-pub(crate) fn to_result(val: c_int) -> EmptyResult {
+pub fn to_result<E: Default>(val: c_int) -> Result<(), E> {
     if val == 0 {
-        EmptyResult::Ok(())
+        Result::Ok(())
     } else {
-        EmptyResult::Err(())
+        Result::Err(E::default())
     }
 }
 

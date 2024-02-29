@@ -1,20 +1,19 @@
 #![allow(unused)]
 
-use mariadb::plugin::ftparser::{FullTextParser, Parameters};
-use mariadb::EmptyResult;
+use mariadb::plugin::ftparser::{FtError, FullTextParser, Parameters};
 
 struct FtSimple;
 
 impl FullTextParser<'_> for FtSimple {
-    fn init(params: &Parameters<'_>) -> EmptyResult {
+    fn init(params: &Parameters<'_>) -> Result<(), FtError> {
         todo!()
     }
 
-    fn parse(params: &Parameters<'_>) -> EmptyResult {
+    fn parse(params: &Parameters<'_>) -> Result<(), FtError> {
         todo!()
     }
 
-    fn deinit(params: &Parameters<'_>) -> EmptyResult {
+    fn deinit(params: &Parameters<'_>) -> Result<(), FtError> {
         todo!()
     }
 }

@@ -5,7 +5,7 @@ edition = '2021'
 license = "GPL-2.0-only"
 
 [build-dependencies]
-bindgen = "0.69.1"
+bindgen = "0.69.4"
 cmake = "0.1.50"
-regex = "1.10.2"
+regex = "1.10.3"
 walkdir = "2.4.0"

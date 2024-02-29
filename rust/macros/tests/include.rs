@@ -9,7 +9,7 @@ pub use mariadb_macros::register_plugin;
 static _SYSVAR_ATOMIC: AtomicI32 = AtomicI32::new(0);
 static _SYSVAR_CONST_STR: SysVarConstString = SysVarConstString::new();
 
-struct TestPlugin;
+pub struct TestPlugin;
 
 impl KeyManager for TestPlugin {
     fn get_latest_key_version(_key_id: u32) -> Result<u32, KeyError> {

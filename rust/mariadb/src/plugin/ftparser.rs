@@ -7,7 +7,10 @@ use std::marker::PhantomData;
 use mariadb_sys as bindings;
 
 use crate::util::to_result;
-use crate::EmptyResult;
+
+/// Generic error emitted by ftparser functions
+#[derive(Default)]
+pub struct FtError;
 
 // TODO: maybe these should take the &[u8] plus some other type that we design
 // instead of passing Parameters directly.
@@ -15,11 +18,11 @@ use crate::EmptyResult;
 // Also, I think I should make a separate parse_full_boolean method
 pub trait FullTextParser<'a> {
     /// Initialize the full text parser for first use on a query
-    fn init(params: &Parameters<'a>) -> EmptyResult;
+    fn init(params: &Parameters<'a>) -> Result<(), FtError>;
     /// Parse a document or query
-    fn parse(params: &Parameters<'a>) -> EmptyResult;
+    fn parse(params: &Parameters<'a>) -> Result<(), FtError>;
     /// Terminate the parser at the end of the query
-    fn deinit(params: &Parameters<'a>) -> EmptyResult;
+    fn deinit(params: &Parameters<'a>) -> Result<(), FtError>;
 }
 
 pub enum ParserMode {
@@ -78,7 +81,7 @@ pub struct Parameters<'a> {
 
 impl Parameters<'_> {
     /// Use the default parser to parse this data
-    pub fn parse(&self, doc: &[u8]) -> EmptyResult {
+    pub fn parse(&self, doc: &[u8]) -> Result<(), FtError> {
         let this = self.inner.get();
         let parse_fn = unsafe { (*this).mysql_parse.unwrap() };
         let res = unsafe { parse_fn(this, doc.as_ptr().cast(), doc.len().try_into().unwrap()) };
