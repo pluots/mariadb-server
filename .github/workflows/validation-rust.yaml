@@ -70,7 +70,7 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: docker_obj
-          key: ${{ runner.os }}-build
+          key: ${{ runner.os }}-build-${{ hashFiles('**/Dockerfile') }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Build Image
@@ -131,34 +131,35 @@ jobs:
       - uses: taiki-e/install-action@cargo-binstall
       - run: cargo binstall cargo-audit
       - name: Run security audit with cargo-audit
-        run: cd rust/ && cargo audit
+        run: cargo audit
       - name: Audit dependency licenses with cargo-deny
         uses: EmbarkStudios/cargo-deny-action@v1
-        with:
-          arguments: --manifest-path Cargo.toml
 
   doc:
     name: "Docs (cargo doc) & Pub"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: sudo apt-get update && sudo apt-get install cmake
-      - uses: dtolnay/rust-toolchain@nightly
+      - run: |
+          sudo apt-get update
+          sudo apt-get install cmake
+          rustup default nightly
       - uses: Swatinem/rust-cache@v2
       # test docs for everything
       - name: Test build all docs
         run: cargo doc --no-deps
-      # create docs for the crate we care about
+      # create docs for the crates we care about
       - name: Build docs for publish
         run: |
           rm -rf target/doc/
-          cargo doc --manifest-path mariadb/Cargo.toml --no-deps
-          cargo doc --manifest-path mariadb-sys/Cargo.toml --no-deps
+          cargo doc --manifest-path rust/mariadb/Cargo.toml --no-deps
+          cargo doc --manifest-path rust/mariadb-sys/Cargo.toml --no-deps
       - run: |
-          echo "`pwd`/target/doc" >> $GITHUB_PATH
+          echo "$(pwd)/target/doc" >> "$GITHUB_PATH"
           # fake index.html so github likes us
           echo '<meta http-equiv="refresh" content="0; url=mariadb">' > target/doc/index.html
       - name: Deploy GitHub Pages
+        if: github.ref == 'refs/heads/rust'
         run: |
           git worktree add gh-pages
           git config user.name "Deploy from CI"
