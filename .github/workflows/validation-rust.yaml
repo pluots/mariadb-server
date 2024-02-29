@@ -134,10 +134,8 @@ jobs:
         run: cd rust/ && cargo audit
       - name: Audit dependency licenses with cargo-deny
         uses: EmbarkStudios/cargo-deny-action@v1
-          
-    #   uses: rustsec/audit-check@v1.4.1
-    #   with:
-    #     token: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          arguments: --manifest-path Cargo.toml
 
   doc:
     name: "Docs (cargo doc) & Pub"
@@ -153,13 +151,13 @@ jobs:
       # create docs for the crate we care about
       - name: Build docs for publish
         run: |
-          rm -rf target/doc/ rust/target/doc/
-          cargo doc --manifest-path rust/mariadb/Cargo.toml --no-deps
-          cargo doc --manifest-path rust/mariadb-sys/Cargo.toml --no-deps
+          rm -rf target/doc/
+          cargo doc --manifest-path mariadb/Cargo.toml --no-deps
+          cargo doc --manifest-path mariadb-sys/Cargo.toml --no-deps
       - run: |
-          echo `pwd`/rust/target/doc >> $GITHUB_PATH
+          echo "`pwd`/target/doc" >> $GITHUB_PATH
           # fake index.html so github likes us
-          echo "<meta http-equiv=\"refresh\" content=\"0; url=mariadb\">" > rust/target/doc/index.html
+          echo '<meta http-equiv="refresh" content="0; url=mariadb">' > target/doc/index.html
       - name: Deploy GitHub Pages
         run: |
           git worktree add gh-pages
@@ -169,7 +167,7 @@ jobs:
           # Delete the ref to avoid keeping history.
           git update-ref -d refs/heads/gh-pages
           rm -rf *
-          mv ../rust/target/doc/* .
+          mv ../target/doc/* .
           git add .
           git commit -m "Deploy $GITHUB_SHA to gh-pages"
           git push --force --set-upstream origin gh-pages
