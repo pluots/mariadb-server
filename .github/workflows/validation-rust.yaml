@@ -147,13 +147,13 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       # test docs for everything
       - name: Test build all docs
-        run: cargo doc --no-deps
+        run: cargo doc --no-deps --all-features
       # create docs for the crates we care about
       - name: Build docs for publish
         run: |
           rm -rf target/doc/
-          cargo doc --manifest-path rust/mariadb/Cargo.toml --no-deps
-          cargo doc --manifest-path rust/mariadb-sys/Cargo.toml --no-deps
+          cargo doc --manifest-path rust/mariadb/Cargo.toml --no-deps --all-features
+          cargo doc --manifest-path rust/mariadb-sys/Cargo.toml --no-deps --all-features
       - run: |
           echo "$(pwd)/target/doc" >> "$GITHUB_PATH"
           # fake index.html so github likes us
