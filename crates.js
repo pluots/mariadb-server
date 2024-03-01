@@ -1,0 +1,1 @@
+window.ALL_CRATES = ["mariadb","mariadb_sys"];

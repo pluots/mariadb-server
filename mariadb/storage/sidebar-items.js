@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["MAX_RECORD_LENGTH"],"enum":["StorageError"],"struct":["HandlertonCtx","Mode","OpenOp"],"trait":["Handler","Handlerton"],"type":["StorageResult"]};

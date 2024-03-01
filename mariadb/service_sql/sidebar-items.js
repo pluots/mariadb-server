@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ClientError"],"static":["sql_service"],"struct":["Connection","ConnectionOpts","Field","FieldMeta","Row","Rows"],"type":["ClientResult"]};

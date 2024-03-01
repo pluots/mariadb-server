@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Value"],"macro":["configure_logger","error_once","register_plugin_storage","warn_once"],"mod":["dbug","plugin","service_sql","sql","storage"],"struct":["MemRoot","TableShare","Thd"]};

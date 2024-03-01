@@ -1,0 +1,347 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `rust/mariadb/src/storage/error.rs`."><title>error.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e935ef01ae1c1829.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="mariadb" data-themes="" data-resource-suffix="" data-rustdoc-version="1.78.0-nightly (878c8a2a6 2024-02-29)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-4c98445ec4002617.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-12cf3b4f4f9dc36d.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../mariadb/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<a href="#2" id="2">2</a>
+<a href="#3" id="3">3</a>
+<a href="#4" id="4">4</a>
+<a href="#5" id="5">5</a>
+<a href="#6" id="6">6</a>
+<a href="#7" id="7">7</a>
+<a href="#8" id="8">8</a>
+<a href="#9" id="9">9</a>
+<a href="#10" id="10">10</a>
+<a href="#11" id="11">11</a>
+<a href="#12" id="12">12</a>
+<a href="#13" id="13">13</a>
+<a href="#14" id="14">14</a>
+<a href="#15" id="15">15</a>
+<a href="#16" id="16">16</a>
+<a href="#17" id="17">17</a>
+<a href="#18" id="18">18</a>
+<a href="#19" id="19">19</a>
+<a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
+<a href="#22" id="22">22</a>
+<a href="#23" id="23">23</a>
+<a href="#24" id="24">24</a>
+<a href="#25" id="25">25</a>
+<a href="#26" id="26">26</a>
+<a href="#27" id="27">27</a>
+<a href="#28" id="28">28</a>
+<a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
+<a href="#36" id="36">36</a>
+<a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
+<a href="#39" id="39">39</a>
+<a href="#40" id="40">40</a>
+<a href="#41" id="41">41</a>
+<a href="#42" id="42">42</a>
+<a href="#43" id="43">43</a>
+<a href="#44" id="44">44</a>
+<a href="#45" id="45">45</a>
+<a href="#46" id="46">46</a>
+<a href="#47" id="47">47</a>
+<a href="#48" id="48">48</a>
+<a href="#49" id="49">49</a>
+<a href="#50" id="50">50</a>
+<a href="#51" id="51">51</a>
+<a href="#52" id="52">52</a>
+<a href="#53" id="53">53</a>
+<a href="#54" id="54">54</a>
+<a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>strum::{EnumIter, IntoEnumIterator};
+
+<span class="kw">use </span><span class="kw">crate</span>::bindings;
+
+<span class="kw">pub type </span>StorageResult&lt;T = ()&gt; = <span class="prelude-ty">Result</span>&lt;T, StorageError&gt;;
+
+<span class="doccomment">/// Storage handler error types, as defined in `my_base.h`
+</span><span class="attr">#[derive(Debug, EnumIter)]
+</span><span class="kw">pub enum </span>StorageError {
+    <span class="doccomment">/// Didn't find key on read or update
+    </span>KeyNotFound = bindings::HA_ERR_KEY_NOT_FOUND <span class="kw">as </span>isize,
+    <span class="doccomment">/// Duplicate key on write
+    </span>FoundDuppKey = bindings::HA_ERR_FOUND_DUPP_KEY <span class="kw">as </span>isize,
+    <span class="doccomment">/// Internal error
+    </span>InternalError = bindings::HA_ERR_INTERNAL_ERROR <span class="kw">as </span>isize,
+    <span class="doccomment">/// Update with is recoverable
+    </span>RecordChanged = bindings::HA_ERR_RECORD_CHANGED <span class="kw">as </span>isize,
+    <span class="doccomment">/// Wrong index given to function
+    </span>WrongIndex = bindings::HA_ERR_WRONG_INDEX <span class="kw">as </span>isize,
+    <span class="doccomment">/// Indexfile is crashed
+    </span>Crashed = bindings::HA_ERR_CRASHED <span class="kw">as </span>isize,
+    <span class="doccomment">/// Record-file is crashed or table is corrupt
+    </span>WrongInRecord = bindings::HA_ERR_WRONG_IN_RECORD <span class="kw">as </span>isize,
+    <span class="doccomment">/// Out of memory
+    </span>OutOfMem = bindings::HA_ERR_OUT_OF_MEM <span class="kw">as </span>isize,
+    <span class="doccomment">/// Initialization failed and should be retried
+    </span>RetryInit = bindings::HA_ERR_RETRY_INIT <span class="kw">as </span>isize,
+    <span class="doccomment">/// not a MYI file - no signature
+    </span>NotAtAble = bindings::HA_ERR_NOT_A_TABLE <span class="kw">as </span>isize,
+    <span class="doccomment">/// Command not supported
+    </span>WrongCommand = bindings::HA_ERR_WRONG_COMMAND <span class="kw">as </span>isize,
+    <span class="doccomment">/// old databasfile
+    </span>OldFile = bindings::HA_ERR_OLD_FILE <span class="kw">as </span>isize,
+    <span class="doccomment">/// No record read in `update()`
+    </span>NoActiveRecord = bindings::HA_ERR_NO_ACTIVE_RECORD <span class="kw">as </span>isize,
+    <span class="doccomment">/// A record is not there
+    </span>RecordDeleted = bindings::HA_ERR_RECORD_DELETED <span class="kw">as </span>isize,
+    <span class="doccomment">/// No more room in file
+    </span>RecordFileFull = bindings::HA_ERR_RECORD_FILE_FULL <span class="kw">as </span>isize,
+    <span class="doccomment">/// No more room in file
+    </span>IndexFileFull = bindings::HA_ERR_INDEX_FILE_FULL <span class="kw">as </span>isize,
+    <span class="doccomment">/// end in next/prev/first/last
+    </span>EndOfFile = bindings::HA_ERR_END_OF_FILE <span class="kw">as </span>isize,
+    <span class="doccomment">/// unsupported extension used
+    </span>Unsupported = bindings::HA_ERR_UNSUPPORTED <span class="kw">as </span>isize,
+    <span class="doccomment">/// Too big row
+    </span>ToBigRow = bindings::HA_ERR_TO_BIG_ROW <span class="kw">as </span>isize,
+    <span class="doccomment">/// Wrong create option
+    </span>GCreateOption = bindings::HA_WRONG_CREATE_OPTION <span class="kw">as </span>isize,
+    <span class="doccomment">/// Duplicate unique on write
+    </span>FoundDuppUnique = bindings::HA_ERR_FOUND_DUPP_UNIQUE <span class="kw">as </span>isize,
+    <span class="doccomment">/// Can't open charset
+    </span>UnknownCharset = bindings::HA_ERR_UNKNOWN_CHARSET <span class="kw">as </span>isize,
+    <span class="doccomment">/// conflicting tables in MERGE
+    </span>WrongMrgTableDef = bindings::HA_ERR_WRONG_MRG_TABLE_DEF <span class="kw">as </span>isize,
+    <span class="doccomment">/// Last (automatic?) repair failed
+    </span>CrashedOnRepair = bindings::HA_ERR_CRASHED_ON_REPAIR <span class="kw">as </span>isize,
+    <span class="doccomment">/// Table must be repaired
+    </span>CrashedOnUsage = bindings::HA_ERR_CRASHED_ON_USAGE <span class="kw">as </span>isize,
+    LockWaitTimeout = bindings::HA_ERR_LOCK_WAIT_TIMEOUT <span class="kw">as </span>isize,
+    LockTableFull = bindings::HA_ERR_LOCK_TABLE_FULL <span class="kw">as </span>isize,
+    <span class="doccomment">/// Updates not allowed
+    </span>ReadOnlyTransaction = bindings::HA_ERR_READ_ONLY_TRANSACTION <span class="kw">as </span>isize,
+    LockDeadlock = bindings::HA_ERR_LOCK_DEADLOCK <span class="kw">as </span>isize,
+    <span class="doccomment">/// Cannot add a foreign key constr.
+    </span>CannotAddForeign = bindings::HA_ERR_CANNOT_ADD_FOREIGN <span class="kw">as </span>isize,
+    <span class="doccomment">/// Cannot add a child row
+    </span>NoReferencedRow = bindings::HA_ERR_NO_REFERENCED_ROW <span class="kw">as </span>isize,
+    <span class="doccomment">/// Cannot delete a parent row
+    </span>RowIsReferenced = bindings::HA_ERR_ROW_IS_REFERENCED <span class="kw">as </span>isize,
+    <span class="doccomment">/// No savepoint with that name
+    </span>NoSavepoint = bindings::HA_ERR_NO_SAVEPOINT <span class="kw">as </span>isize,
+    <span class="doccomment">/// Non unique key block size
+    </span>NonUniqueBlockSize = bindings::HA_ERR_NON_UNIQUE_BLOCK_SIZE <span class="kw">as </span>isize,
+    <span class="doccomment">/// The table does not exist in engine
+    </span>NoSuchTable = bindings::HA_ERR_NO_SUCH_TABLE <span class="kw">as </span>isize,
+    <span class="doccomment">/// The table existed in storage engine
+    </span>TableExist = bindings::HA_ERR_TABLE_EXIST <span class="kw">as </span>isize,
+    <span class="doccomment">/// Could not connect to storage engine
+    </span>NoConnection = bindings::HA_ERR_NO_CONNECTION <span class="kw">as </span>isize,
+    <span class="doccomment">/// NULLs are not supported in spatial index
+    </span>NullInSpatial = bindings::HA_ERR_NULL_IN_SPATIAL <span class="kw">as </span>isize,
+    <span class="doccomment">/// The table changed in storage engine
+    </span>TableDefChanged = bindings::HA_ERR_TABLE_DEF_CHANGED <span class="kw">as </span>isize,
+    <span class="doccomment">/// There's no partition in table for given value
+    </span>NoPartitionFound = bindings::HA_ERR_NO_PARTITION_FOUND <span class="kw">as </span>isize,
+    <span class="doccomment">/// Row-based binlogging of row failed
+    </span>RbrLoggingFailed = bindings::HA_ERR_RBR_LOGGING_FAILED <span class="kw">as </span>isize,
+    <span class="doccomment">/// Index needed in foreign key constr
+    </span>DropIndexFk = bindings::HA_ERR_DROP_INDEX_FK <span class="kw">as </span>isize,
+    <span class="doccomment">/// Upholding foreign key constraints would lead to a duplicate key error in e other table.
+    </span>ForeignDuplicateKey = bindings::HA_ERR_FOREIGN_DUPLICATE_KEY <span class="kw">as </span>isize,
+    <span class="doccomment">/// The table changed in storage engine
+    </span>TableNeedsUpgrade = bindings::HA_ERR_TABLE_NEEDS_UPGRADE <span class="kw">as </span>isize,
+    <span class="doccomment">/// The table is not writable
+    </span>TableReadonly = bindings::HA_ERR_TABLE_READONLY <span class="kw">as </span>isize,
+    <span class="doccomment">/// Failed to get next autoinc value
+    </span>AutoincReadFailed = bindings::HA_ERR_AUTOINC_READ_FAILED <span class="kw">as </span>isize,
+    <span class="doccomment">/// Failed to set row autoinc value
+    </span>AutoincErange = bindings::HA_ERR_AUTOINC_ERANGE <span class="kw">as </span>isize,
+    <span class="doccomment">/// Generic error
+    </span>Generic = bindings::HA_ERR_GENERIC <span class="kw">as </span>isize,
+    <span class="doccomment">/// row not actually updated: new values same as the old values
+    </span>RecordIsTheSame = bindings::HA_ERR_RECORD_IS_THE_SAME <span class="kw">as </span>isize,
+    <span class="doccomment">/// It is not possible to log this statement
+    </span>LoggingImpossible = bindings::HA_ERR_LOGGING_IMPOSSIBLE <span class="kw">as </span>isize,
+    <span class="doccomment">/// The event was corrupt, leading to illegal data being read
+    </span>CorruptEvent = bindings::HA_ERR_CORRUPT_EVENT <span class="kw">as </span>isize,
+    <span class="doccomment">/// New file format
+    </span>NewFile = bindings::HA_ERR_NEW_FILE <span class="kw">as </span>isize,
+    <span class="doccomment">/// The event could not be processed. No other handler error happene.
+    </span>RowsEventApply = bindings::HA_ERR_ROWS_EVENT_APPLY <span class="kw">as </span>isize,
+    <span class="doccomment">/// Error during initialization
+    </span>Initialization = bindings::HA_ERR_INITIALIZATION <span class="kw">as </span>isize,
+    <span class="doccomment">/// File too short
+    </span>FileTooShort = bindings::HA_ERR_FILE_TOO_SHORT <span class="kw">as </span>isize,
+    <span class="doccomment">/// Wrong CRC on page
+    </span>WrongCrc = bindings::HA_ERR_WRONG_CRC <span class="kw">as </span>isize,
+    <span class="doccomment">/// oo many active concurrent transactions
+    </span>TooManyConcurrentTrxs = bindings::HA_ERR_TOO_MANY_CONCURRENT_TRXS <span class="kw">as </span>isize,
+    <span class="doccomment">/// There's no explicitly listed partition in table for the given value
+    </span>NotInLockPartitions = bindings::HA_ERR_NOT_IN_LOCK_PARTITIONS <span class="kw">as </span>isize,
+    <span class="doccomment">/// Index column length exceeds limit
+    </span>IndexColTooLong = bindings::HA_ERR_INDEX_COL_TOO_LONG <span class="kw">as </span>isize,
+    <span class="doccomment">/// Index corrupted
+    </span>IndexCorrupt = bindings::HA_ERR_INDEX_CORRUPT <span class="kw">as </span>isize,
+    <span class="doccomment">/// Undo log record too big
+    </span>UndoRecTooBig = bindings::HA_ERR_UNDO_REC_TOO_BIG <span class="kw">as </span>isize,
+    <span class="doccomment">/// Invalid InnoDB Doc ID
+    </span>InvalidDocid = bindings::HA_FTS_INVALID_DOCID <span class="kw">as </span>isize,
+    <span class="comment">// /// Table being used in foreign key check (disabled in `my_base.h`)
+    // TableInFkCheck = bindings::HA_ERR_TABLE_IN_FK_CHECK as isize,
+    </span><span class="doccomment">/// The tablespace existed in storage engine
+    </span>TablespaceExists = bindings::HA_ERR_TABLESPACE_EXISTS <span class="kw">as </span>isize,
+    <span class="doccomment">/// Table has too many columns
+    </span>TooManyFields = bindings::HA_ERR_TOO_MANY_FIELDS <span class="kw">as </span>isize,
+    <span class="doccomment">/// Row in wrong partition
+    </span>RowInWrongPartition = bindings::HA_ERR_ROW_IN_WRONG_PARTITION <span class="kw">as </span>isize,
+    RowNotVisible = bindings::HA_ERR_ROW_NOT_VISIBLE <span class="kw">as </span>isize,
+    AbortedByUser = bindings::HA_ERR_ABORTED_BY_USER <span class="kw">as </span>isize,
+    DiskFull = bindings::HA_ERR_DISK_FULL <span class="kw">as </span>isize,
+    IncompatibleDefinition = bindings::HA_ERR_INCOMPATIBLE_DEFINITION <span class="kw">as </span>isize,
+    <span class="doccomment">/// Too many words in a phrase
+    </span>FtsTooManyWordsInPhrase = bindings::HA_ERR_FTS_TOO_MANY_WORDS_IN_PHRASE <span class="kw">as </span>isize,
+    <span class="doccomment">/// Table encrypted but decrypt failed
+    </span>DecryptionFailed = bindings::HA_ERR_DECRYPTION_FAILED <span class="kw">as </span>isize,
+    <span class="doccomment">/// FK cascade depth exceeded
+    </span>FkDepthExceeded = bindings::HA_ERR_FK_DEPTH_EXCEEDED <span class="kw">as </span>isize,
+    <span class="doccomment">/// Missing Tablespace
+    </span>TablespaceMissing = bindings::HA_ERR_TABLESPACE_MISSING <span class="kw">as </span>isize,
+    SequenceInvalidData = bindings::HA_ERR_SEQUENCE_INVALID_DATA <span class="kw">as </span>isize,
+    SequenceRunOut = bindings::HA_ERR_SEQUENCE_RUN_OUT <span class="kw">as </span>isize,
+    CommitError = bindings::HA_ERR_COMMIT_ERROR <span class="kw">as </span>isize,
+    PartitionList = bindings::HA_ERR_PARTITION_LIST <span class="kw">as </span>isize,
+    NoEncryption = bindings::HA_ERR_NO_ENCRYPTION <span class="kw">as </span>isize,
+}
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>check_error_counts() {
+        <span class="comment">// Verify errors are synced between here and MDB
+        // numbers 125 (unnamed) and 183 (`HA_ERR_TABLE_IN_FK_CHECK`) are missing
+        </span><span class="kw">const </span>SKIPPED_ERR_COUNT: usize = <span class="number">2</span>;
+        <span class="macro">assert_eq!</span>(
+            StorageError::iter().count() + SKIPPED_ERR_COUNT,
+            bindings::HA_ERR_ERRORS.try_into().unwrap()
+        );
+    }
+}
+</code></pre></div></section></main></body></html>

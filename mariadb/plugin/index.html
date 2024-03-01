@@ -1,0 +1,61 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Module for everything relevant to plugins"><title>mariadb::plugin - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e935ef01ae1c1829.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="mariadb" data-themes="" data-resource-suffix="" data-rustdoc-version="1.78.0-nightly (878c8a2a6 2024-02-29)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-4c98445ec4002617.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-12cf3b4f4f9dc36d.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../mariadb/index.html">mariadb</a><span class="version">0.1.0</span></h2></div><h2 class="location"><a href="#">Module plugin</a></h2><div class="sidebar-elems"><section><ul class="block"><li><a href="#modules">Modules</a></li><li><a href="#macros">Macros</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li></ul></section><h2><a href="../index.html">In crate mariadb</a></h2></div></nav><div class="sidebar-resizer"></div>
+    <main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../mariadb/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../index.html">mariadb</a>::<wbr><a class="mod" href="#">plugin</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="src" href="../../src/mariadb/plugin.rs.html#1-204">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Module for everything relevant to plugins</p>
+<p>Usage:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>mariadb::plugin::<span class="kw-2">*</span>;
+<span class="kw">use </span>mariadb::plugin::encryption::<span class="kw-2">*</span>;
+<span class="kw">use </span>mariadb::plugin::SysVarConstString;
+
+<span class="kw">static </span>SYSVAR_STR: SysVarConstString = SysVarConstString::new();
+
+
+<span class="comment">// May be empty or not
+</span><span class="kw">struct </span>ExampleKeyManager;
+
+<span class="kw">impl </span>KeyManager <span class="kw">for </span>ExampleKeyManager {
+    <span class="comment">// ...
+</span>}
+
+<span class="kw">impl </span>Init <span class="kw">for </span>ExampleKeyManager {
+    <span class="comment">// ...
+</span>}
+
+<span class="macro">register_plugin!</span> {
+    ExampleKeyManager,                           <span class="comment">// Name of the struct implementing KeyManager
+    </span>ptype: PluginType::MariaEncryption,          <span class="comment">// plugin type; only encryption supported for now
+    </span>name: <span class="string">"name_as_sql_server_sees_it"</span>,          <span class="comment">// loadable plugin name
+    </span>author: <span class="string">"Author Name"</span>,                       <span class="comment">// author's name
+    </span>description: <span class="string">"Sample key managment plugin"</span>,  <span class="comment">// give a description
+    </span>license: License::Gpl,                       <span class="comment">// select a license type
+    </span>maturity: Maturity::Experimental,            <span class="comment">// indicate license maturity
+    </span>version: <span class="string">"0.1"</span>,                              <span class="comment">// provide an "a.b" version
+    </span>init: ExampleKeyManager,                     <span class="comment">// optional: struct implementing Init if needed
+    </span>encryption: <span class="bool-val">false</span>,                           <span class="comment">// set to `false` to use default encryption, `true` if your main
+                                                 // struct implements 'Encryption`, and another type
+                                                 // if a different type should be used for encryption
+    // decryption: DecryptionContext,            // optional field: if `encryption` is specified as a type
+                                                 // but the type that implements `Decryption` is different,
+                                                 // it can be specified here
+    </span>variables: [                                 <span class="comment">// variables should be a list of typed identifiers
+        </span>SysVar {
+            ident: SYSVAR_STR,
+            vtype: SysVarConstString,
+            name: <span class="string">"sql_name"</span>,
+            description: <span class="string">"this is a description"</span>,
+            options: [SysVarOpt::ReadOnly, SysVarOpt::NoCliOption],
+            default: <span class="string">"something"
+        </span>},
+    <span class="comment">//     SysVar {
+    //         ident: OTHER_IDENT,
+    //         vtype: AtomicI32,
+    //         name: "other_sql_name",
+    //         description: "this is a description",
+    //         options: [SysVarOpt::ReqCmdArg],
+    //         default: 100,
+    //         min: 10,
+    //         max: 500,
+    //         interval: 10
+    //     }
+     </span>]
+}</code></pre></div>
+</div></details><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="encryption/index.html" title="mod mariadb::plugin::encryption">encryption</a></div><div class="desc docblock-short">Requirements to implement an encryption plugin</div></li><li><div class="item-name"><a class="mod" href="ftparser/index.html" title="mod mariadb::plugin::ftparser">ftparser</a></div></li><li><div class="item-name"><a class="mod" href="prelude/index.html" title="mod mariadb::plugin::prelude">prelude</a></div><div class="desc docblock-short">Commonly used plugin types for reexport</div></li><li><div class="item-name"><a class="mod" href="storage/index.html" title="mod mariadb::plugin::storage">storage</a></div></li></ul><h2 id="macros" class="section-header">Macros<a href="#macros" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="macro" href="macro.register_plugin.html" title="macro mariadb::plugin::register_plugin">register_plugin</a></div><div class="desc docblock-short">Macro to use to register a plugin</div></li></ul><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.InitError.html" title="struct mariadb::plugin::InitError">InitError</a></div><div class="desc docblock-short">Indicate that an error occured during initialization or deinitialization</div></li><li><div class="item-name"><a class="struct" href="struct.SysVarConstString.html" title="struct mariadb::plugin::SysVarConstString">SysVarConstString</a></div><div class="desc docblock-short">A const string system variable</div></li><li><div class="item-name"><a class="struct" href="struct.SysVarString.html" title="struct mariadb::plugin::SysVarString">SysVarString</a></div><div class="desc docblock-short">An editable c string</div></li></ul><h2 id="enums" class="section-header">Enums<a href="#enums" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.License.html" title="enum mariadb::plugin::License">License</a></div><div class="desc docblock-short">Defines possible licenses for plugins</div></li><li><div class="item-name"><a class="enum" href="enum.Maturity.html" title="enum mariadb::plugin::Maturity">Maturity</a></div><div class="desc docblock-short">Defines possible licenses for plugins</div></li><li><div class="item-name"><a class="enum" href="enum.PluginType.html" title="enum mariadb::plugin::PluginType">PluginType</a></div><div class="desc docblock-short">Defines a type of plugin. This determines the required implementation.</div></li><li><div class="item-name"><a class="enum" href="enum.SysVarOpt.html" title="enum mariadb::plugin::SysVarOpt">SysVarOpt</a></div><div class="desc docblock-short">Possible flags for plugin variables</div></li></ul><h2 id="traits" class="section-header">Traits<a href="#traits" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.Init.html" title="trait mariadb::plugin::Init">Init</a></div><div class="desc docblock-short">Implement this trait if your plugin requires init or deinit functions</div></li></ul></section></div></main></body></html>

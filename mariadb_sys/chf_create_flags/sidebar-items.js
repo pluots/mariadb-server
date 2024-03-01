@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["CHF_CREATE_FLAG","CHF_DELETE_FLAG","CHF_INDEX_FLAG","CHF_RENAME_FLAG"],"type":["Type"]};

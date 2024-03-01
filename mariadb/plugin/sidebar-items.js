@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["License","Maturity","PluginType","SysVarOpt"],"macro":["register_plugin"],"mod":["encryption","ftparser","prelude","storage"],"struct":["InitError","SysVarConstString","SysVarString"],"trait":["Init"]};

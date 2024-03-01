@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["PARTITIONED_KEY_CACHE","SIMPLE_KEY_CACHE"],"type":["Type"]};

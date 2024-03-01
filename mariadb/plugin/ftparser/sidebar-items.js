@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ParserMode","Presence","TokenType"],"struct":["BooleanInfo","FtError","Parameters"],"trait":["FullTextParser"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["THD_ABORT_ASAP","THD_ABORT_SOFTLY","THD_IS_NOT_KILLED"],"type":["Type"]};

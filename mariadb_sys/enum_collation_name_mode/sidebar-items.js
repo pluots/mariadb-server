@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["MY_COLLATION_NAME_MODE_CONTEXT","MY_COLLATION_NAME_MODE_FULL"],"type":["Type"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["ORDER_ASC","ORDER_DESC","ORDER_NOT_RELEVANT"],"type":["Type"]};

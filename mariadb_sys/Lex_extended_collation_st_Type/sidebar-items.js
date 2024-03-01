@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["TYPE_CONTEXTUALLY_TYPED","TYPE_EXACT"],"type":["Type"]};

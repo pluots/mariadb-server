@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["SEQ_IN_ALTER","SEQ_IN_PREPARE","SEQ_READY_TO_USE","SEQ_UNINTIALIZED"],"type":["Type"]};

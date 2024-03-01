@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["PLUGIN_FORCE","PLUGIN_FORCE_PLUS_PERMANENT","PLUGIN_OFF","PLUGIN_ON"],"type":["Type"]};

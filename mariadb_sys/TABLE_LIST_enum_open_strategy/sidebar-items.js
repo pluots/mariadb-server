@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["OPEN_IF_EXISTS","OPEN_NORMAL","OPEN_STUB"],"type":["Type"]};

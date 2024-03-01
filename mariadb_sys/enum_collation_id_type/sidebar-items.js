@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["MY_COLLATION_ID_TYPE_COMPAT_100800","MY_COLLATION_ID_TYPE_PRECISE"],"type":["Type"]};

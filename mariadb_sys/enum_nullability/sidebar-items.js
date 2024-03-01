@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["NOT_NULL","NULLABLE"],"type":["Type"]};

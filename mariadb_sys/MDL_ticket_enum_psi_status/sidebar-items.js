@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["GRANTED","PENDING","POST_RELEASE_NOTIFY","PRE_ACQUIRE_NOTIFY"],"type":["Type"]};

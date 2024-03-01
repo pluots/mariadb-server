@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["HA_CHOICE_MAX","HA_CHOICE_NO","HA_CHOICE_UNDEF","HA_CHOICE_YES"],"type":["Type"]};

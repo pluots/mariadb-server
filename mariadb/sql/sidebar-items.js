@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["MAX_DATA_LENGTH_FOR_KEY","MAX_REFERENCE_PARTS"]};

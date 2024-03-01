@@ -1,0 +1,174 @@
+---
+
+# Main "useful" actions config file
+# Cache config comes from https://github.com/actions/cache/blob/main/examples.md#rust---cargo
+# actions-rs/toolchain configures rustup
+# actions-rs/cargo actually runs cargo
+
+on:
+  push:
+    branches:
+    - rust
+  pull_request:
+
+name: Rust Validation
+
+env:
+  RUST_BACKTRACE: "1"
+  CARGO_UNSTABLE_SPARSE_REGISTRY: true
+
+jobs:
+  clippy:
+    name: Check with Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: sudo apt-get update && sudo apt-get install cmake
+      - uses: dtolnay/rust-toolchain@beta
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy -- -D warnings
+
+  test:
+    strategy:
+        fail-fast: true
+        matrix:
+          os: [ubuntu-latest] #, windows-latest, macos-latest]
+          include:
+            - os: ubuntu-latest
+              name: linux
+              
+            # - os: windows-latest
+            #   name: windows
+            # - os: macos-latest
+            #   name: mac
+
+    name: Unit tests on ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test
+
+  mtr:
+    name: Run mtr integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Restore docker layer cache
+        uses: actions/cache/restore@v3
+        id: cache-docker-restore
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-docker-buildx-${{ hashFiles('**/Dockerfile') }}
+      - name: Restore build cache
+        id: cache-build-restore
+        uses: actions/cache/restore@v3
+        with:
+          path: docker_obj
+          key: ${{ runner.os }}-build-${{ hashFiles('**/Dockerfile') }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Build Image
+        uses: docker/build-push-action@v3
+        with:
+          load: true
+          tags: mdb-test-build:latest
+          file: rust/scripts/dockerfiles/Dockerfile
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new
+      - # Temp fix
+        # https://github.com/docker/build-push-action/issues/252
+        # https://github.com/moby/buildkit/issues/1896
+        name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+      - name: Run docker tests
+        run: >
+          mkdir -p docker_obj &&
+          docker run --rm
+          --volume $(pwd):/checkout:ro
+          --volume $(pwd)/docker_obj:/obj
+          mdb-test-build
+          /bin/bash -c
+          'rust/scripts/build.sh && rust/scripts/run_mtr.sh'
+      - name: Save docker layer cache
+        uses: actions/cache/save@v3
+        id: cache-docker-save
+        if: always() # always save cache even if tests fail
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ steps.cache-docker-restore.outputs.cache-primary-key }}
+      - name: Save build cache
+        id: cache-build-save
+        uses: actions/cache/save@v3
+        if: always() # always save cache even if tests fail
+        with:
+          path: docker_obj
+          key: ${{ steps.cache-build-restore.outputs.cache-primary-key }}
+
+  fmt:
+    name: Check Rust formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all -- --check
+
+  audit:
+    name: Audit dependencies for security & license compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: taiki-e/install-action@cargo-binstall
+      - run: cargo binstall cargo-audit
+      - name: Run security audit with cargo-audit
+        run: cargo audit
+      - name: Audit dependency licenses with cargo-deny
+        uses: EmbarkStudios/cargo-deny-action@v1
+
+  doc:
+    name: "Docs (cargo doc) & Pub"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: |
+          sudo apt-get update
+          sudo apt-get install cmake
+          rustup default nightly
+      - uses: Swatinem/rust-cache@v2
+      # test docs for everything
+      - name: Test build all docs
+        run: cargo doc --no-deps --all-features
+      # create docs for the crates we care about
+      - name: Build docs for publish
+        run: |
+          rm -rf target/doc/
+          cargo doc --manifest-path rust/mariadb/Cargo.toml --no-deps --all-features
+          cargo doc --manifest-path rust/mariadb-sys/Cargo.toml --no-deps --all-features
+      - run: |
+          echo "$(pwd)/target/doc" >> "$GITHUB_PATH"
+          # fake index.html so github likes us
+          echo '<meta http-equiv="refresh" content="0; url=mariadb">' > target/doc/index.html
+      - name: Deploy GitHub Pages
+        if: github.ref == 'refs/heads/rust'
+        run: |
+          git worktree add gh-pages
+          git config user.name "Deploy from CI"
+          git config user.email ""
+          cd gh-pages
+          # Delete the ref to avoid keeping history.
+          git update-ref -d refs/heads/gh-pages
+          rm -rf *
+          mv ../target/doc/* .
+          git add .
+          git commit -m "Deploy $GITHUB_SHA to gh-pages"
+          git push --force --set-upstream origin gh-pages

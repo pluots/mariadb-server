@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["OPEN_FRM_ONLY","OPEN_FULL_TABLE","SKIP_OPEN_TABLE"],"type":["Type"]};
