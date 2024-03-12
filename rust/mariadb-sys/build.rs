@@ -203,6 +203,11 @@ fn make_bindings_with_includes(include_paths: &[PathBuf]) -> Result<Bindings, Er
         // dynamic thing).
         .allowlist_item("MYSQL_.*")
         .allowlist_type("sql_service_st")
+        // Types that fail bindgen's layout tests we make opaque
+        .opaque_type("I_P_List")
+        .opaque_type("I_P_List_null_counter")
+        .opaque_type("I_P_List_no_push_back")
+        .opaque_type("MDL_ticket")
         // Finish the builder and generate the bindings.
         .generate()
         .map_err(Into::into)
