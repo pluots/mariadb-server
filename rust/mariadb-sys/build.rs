@@ -87,19 +87,6 @@ fn make_bindings() {
             .write_to_file(out_path.join("bindings.rs"))
             .expect("couldn't write bindings");
 
-        // Tell cargo to rerun if header files change. We walkdir to find only headers
-        // because using every file was too slow.
-        for path in include_paths.iter() {
-            for header_file in walkdir::WalkDir::new(path)
-                .into_iter()
-                .filter_map(Result::ok)
-                .map(walkdir::DirEntry::into_path)
-                .filter(|p| p.extension() == Some("h".as_ref()))
-            {
-                println!("cargo:rerun-if-changed={}", header_file.display());
-            }
-        }
-
         success = true;
         break;
     }
@@ -127,7 +114,7 @@ fn include_paths_from_cmake() -> Option<Vec<PathBuf>> {
         };
         eprintln!("using paths from cmake");
 
-        Some(vec![PathBuf::from(src_dir), PathBuf::from(dst_dir)])
+        dbg!(Some(vec![PathBuf::from(src_dir), PathBuf::from(dst_dir)]))
     } else {
         eprintln!("cmake environment not set, skipping");
         None
@@ -165,6 +152,9 @@ fn make_bindings_with_includes(include_paths: &[PathBuf]) -> Result<Bindings, Er
         .header("src/handler_helper.h")
         // Fix math.h double defines
         .parse_callbacks(Box::new(BuildCallbacks))
+        .parse_callbacks(Box::new(
+            bindgen::CargoCallbacks::new().rerun_on_header_files(true),
+        ))
         .clang_args(incl_args)
         .clang_arg("-xc++")
         .clang_arg("-std=c++17")
@@ -213,6 +203,13 @@ fn make_bindings_with_includes(include_paths: &[PathBuf]) -> Result<Bindings, Er
         // dynamic thing).
         .allowlist_item("MYSQL_.*")
         .allowlist_type("sql_service_st")
+        // Types that fail bindgen's layout tests we make opaque
+        .opaque_type("I_P_List")
+        .opaque_type("I_P_List_null_counter")
+        .opaque_type("I_P_List_no_push_back")
+        .opaque_type("MDL_ticket")
+        .opaque_type("Lex_extended_charset_extended_collation_attrs")
+        .opaque_type("Lex_extended_charset_extended_collation_attrs_st")
         // Finish the builder and generate the bindings.
         .generate()
         .map_err(Into::into)

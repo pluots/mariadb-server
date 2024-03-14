@@ -12,9 +12,9 @@ use super::wrapper::{init_common, PluginMeta};
 use crate::storage::{Handler, Handlerton};
 use crate::{bindings, MemRoot, TableShare};
 
-/// Trait implemented by the macro for an easy
+/// Internal trait implemented by the macro for an easy way to bridge to the C interface.
 pub trait HandlertonMeta: Handlerton + PluginMeta {
-    /// This function should return the vtable, which should be located in statics.
+    /// This function should return the vtable, which should be located in static data.
     fn get_vtable() -> &'static bindings::handler_bridge_vt;
 }
 

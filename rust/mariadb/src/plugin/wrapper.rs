@@ -4,8 +4,8 @@ use std::{env, ptr};
 use super::{Init, InitError};
 use crate::{bindings, configure_logger};
 
-/// Meta that we generate in the proc macro, which we can use to get information about our type in
-/// wrappers
+/// Internal meta that we generate in the proc macro, which we can use to get information
+/// about our type in wrappers.
 pub trait PluginMeta {
     const NAME: &'static str;
 }
