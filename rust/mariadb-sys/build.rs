@@ -208,6 +208,8 @@ fn make_bindings_with_includes(include_paths: &[PathBuf]) -> Result<Bindings, Er
         .opaque_type("I_P_List_null_counter")
         .opaque_type("I_P_List_no_push_back")
         .opaque_type("MDL_ticket")
+        .opaque_type("Lex_extended_charset_extended_collation_attrs")
+        .opaque_type("Lex_extended_charset_extended_collation_attrs_st")
         // Finish the builder and generate the bindings.
         .generate()
         .map_err(Into::into)

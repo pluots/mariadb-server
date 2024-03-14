@@ -9,7 +9,7 @@ mod handler;
 mod handlerton;
 
 pub use error::{StorageError, StorageResult};
-pub use handler::{Handler, Mode, OpenOp};
+pub use handler::{Handler, Mode, OpenOp, TableFlags};
 pub use handlerton::{Handlerton, HandlertonCtx};
 
 use crate::bindings;

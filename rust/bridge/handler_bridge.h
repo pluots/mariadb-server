@@ -68,7 +68,7 @@ typedef struct handler_bridge_vt {
 
 
 /** Wrapper that can expose a C vtable as a C++ class */
-class handler_bridge: public handler {
+class handler_bridge final: public handler {
 public:
   /** The vtable that we defer to for all method calls */
   const handler_bridge_vt *const vt;
